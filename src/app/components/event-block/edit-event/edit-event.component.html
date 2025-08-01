@@ -1,0 +1,33 @@
+<h2 mat-dialog-title>Edit event</h2>
+<mat-dialog-content>
+  <form [formGroup]="editForm">
+    <div>
+      <mat-form-field>
+        <mat-label>Demand name</mat-label>
+        <input matInput formControlName="name"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Demand amount</mat-label>
+        <input matInput type="number" formControlName="amount" placeholder="2000"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Max shift weeks early</mat-label>
+        <input matInput formControlName="maxShiftWeeksEarly" placeholder="2"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Max shift weeks late</mat-label>
+        <input matInput formControlName="maxShiftWeeksLate" placeholder="2"/>
+      </mat-form-field>
+    </div>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-button (click)="onCloseDialog()">Close</button>
+  <button mat-button (click)="onCloseDialog(false)">Ok</button>
+</mat-dialog-actions>

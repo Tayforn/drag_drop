@@ -1,0 +1,37 @@
+name: Deploy Angular App to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Or 'master' if that's your default branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # This permission is crucial for pushing to the gh-pages branch
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use a stable Node.js version, e.g., 18 or 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Angular app
+        run: npm run build -- --base-href /${{ github.event.repository.name }}/ # Builds with the dynamic repo name
+        env:
+          NG_CLI_ANALYTICS: "false" # Disable analytics during CI build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist/${{ github.event.repository.name }}/browser # Adjust if your output path is different
+          # Example if your angular.json outputPath was just "dist":
+          # publish_dir: ./dist

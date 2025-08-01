@@ -1,0 +1,208 @@
+<app-import-data
+  [supplierOverflowErrors]="supplierOverflowErrors"
+  [eventsShiftErrors]="eventsShiftErrors"
+  [shiftPenalties]="shiftPenalties()"
+  [unassignedPenalties]="unassignedPenalties()"
+  [productionPenalties]="productionPenalties()"
+  [allCalcSum]="allCalcSum()"
+></app-import-data>
+@if (suppliers.length > 0) {
+  <div class="flex pb-4 align-items-center justify-content-center">
+    <button mat-stroked-button (click)="addWeeksToRange(true)">+</button>
+    <b class="px-2">Add weeks to range</b>
+    <button mat-stroked-button (click)="addWeeksToRange(false)">+</button>
+  </div>
+
+  <div class="scheduler-container">
+
+
+    <div [style.width.px]="SUPPLIER_COLUMN_WIDTH_PX" style="height: calc(100vh - 190px);overflow: hidden">
+      <div class="header-corner"></div>
+
+      <div class="supplier-column" #supplierContainer>
+        @for (supplier of suppliers; track supplier) {
+          <div
+            class="supplier-row-header"
+            [style.height.px]="(supplier.calculatedCapacity && (supplier.calculatedCapacity > supplier.capacity)) ? supplier.calculatedCapacity * AMOUNT_ROW_HEIGHT_UNIT_PX : supplier.capacity * AMOUNT_ROW_HEIGHT_UNIT_PX"
+          >
+            {{ supplier.name }} @if (supplier.id !== 'unassigned') {({{ supplier.capacity }})}
+            @if (supplier.calculatedCapacity && (supplier.calculatedCapacity > supplier.capacity)) {
+          }
+            @if (supplier.calculatedCapacity && (supplier.calculatedCapacity > supplier.capacity)) {
+              <div class="grid-background-supplier-overflow"
+                   [style.height.px]="(supplier.calculatedCapacity - supplier.capacity) * AMOUNT_ROW_HEIGHT_UNIT_PX"
+              >
+                <span style="color: red">+{{ supplier.calculatedCapacity - supplier.capacity }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+
+    <div class="scroll-container" #scrollContainer>
+
+      <div class="sticky-container">
+        <div class="year-header-container">
+          @for (year of years; track year) {
+            <div
+              class="year-header"
+              [style.width.px]="(WEEK_COLUMN_WIDTH_PX * year.count) - 2"
+            >
+              {{ year.year }}
+            </div>
+          }
+        </div>
+        <div class="week-headers-container">
+          @for (week of weeks; track week) {
+            <div
+              class="week-header"
+              [class.overflow-week]="week.overflow"
+              [style.width.px]="WEEK_COLUMN_WIDTH_PX"
+            >
+              {{ week.label }}
+            </div>
+          }
+        </div>
+      </div>
+
+        <div
+          #gridContainer
+          class="grid-content"
+          [style.width.px]="weeks.length * WEEK_COLUMN_WIDTH_PX"
+          [style.height.px]="getGridContentHeight()"
+          cdkDropList>
+          @for (week of weeks; track week; let i = $index) {
+            <div
+              class="grid-background-week-line"
+              [style.left.px]="i * WEEK_COLUMN_WIDTH_PX"
+            ></div>
+          }
+          @for (supplier of suppliers; track supplier; let i = $index) {
+            <div
+              class="grid-background-supplier-line"
+              [style.top.px]="getSupplierLineTopPosition(i)"
+            >
+              @if (supplier.calculatedCapacity && (supplier.calculatedCapacity > supplier.capacity)) {
+                <div class="grid-background-supplier-overflow"
+                     [style.height.px]="(supplier.calculatedCapacity - supplier.capacity) * AMOUNT_ROW_HEIGHT_UNIT_PX"
+                     [style.top.px]="supplier.capacity * AMOUNT_ROW_HEIGHT_UNIT_PX"
+                >
+                </div>
+              }
+            </div>
+          }
+
+
+          @for (event of events(); track event) {
+            <app-event-block
+              [event]="event"
+              [top]="event.topPosition"
+              [left]="event.leftPosition"
+              [amount]="event.amount"
+              [distance]="event.distance"
+              [pixelsPerWeek]="WEEK_COLUMN_WIDTH_PX"
+              [pixelsPerAmountUnit]="AMOUNT_ROW_HEIGHT_UNIT_PX"
+              (dragEnded)="onDragEnded($event.$event, $event.event)"
+              (dragStarted)="onDragStarted($event.$event, $event.event)"
+              (dragMoved)="onDragMoved($event.$event, $event.event)"
+              (editEvent)="onEditEvent($event)"
+            ></app-event-block>
+          }
+
+        </div>
+
+    </div>
+
+
+  </div>
+  <!--<div class="scheduler-container">
+    <div class="header-corner"></div>
+
+
+    <div>
+      <div class="year-header-container">
+        @for (year of years; track year) {
+          <div
+            class="year-header"
+            [style.width.px]="(WEEK_COLUMN_WIDTH_PX * year.count) - 2"
+          >
+            {{ year.year }}
+          </div>
+        }
+      </div>
+      <div class="week-headers-container">
+        @for (week of weeks; track week) {
+          <div
+            class="week-header"
+            [style.width.px]="WEEK_COLUMN_WIDTH_PX"
+          >
+            {{ week.label }}
+          </div>
+        }
+      </div>
+    </div>
+
+
+
+    <div class="supplier-column">
+      @for (supplier of suppliers; track supplier) {
+        <div
+          class="supplier-row-header"
+          [style.height.px]="(supplier.calculatedCapacity && (supplier.calculatedCapacity > supplier.capacity)) ? supplier.calculatedCapacity * AMOUNT_ROW_HEIGHT_UNIT_PX : supplier.capacity * AMOUNT_ROW_HEIGHT_UNIT_PX"
+        >
+          {{ supplier.name }} ({{ supplier.capacity }}) @if (supplier.calculatedCapacity && (supplier.calculatedCapacity > supplier.capacity)) {}
+          @if (supplier.calculatedCapacity && (supplier.calculatedCapacity > supplier.capacity)) {
+            <div class="grid-background-supplier-overflow"
+                 [style.height.px]="(supplier.calculatedCapacity - supplier.capacity) * AMOUNT_ROW_HEIGHT_UNIT_PX"
+            >
+              <span style="color: red">+{{supplier.calculatedCapacity - supplier.capacity}}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+
+    <div
+      #gridContainer
+      class="grid-content"
+      [style.width.px]="weeks.length * WEEK_COLUMN_WIDTH_PX"
+      [style.height.px]="getGridContentHeight()"
+      cdkDropList>
+      @for (week of weeks; track week; let i = $index) {
+        <div
+          class="grid-background-week-line"
+          [style.left.px]="i * WEEK_COLUMN_WIDTH_PX"
+        ></div>
+      }
+      @for (supplier of suppliers; track supplier; let i = $index) {
+        <div
+          class="grid-background-supplier-line"
+          [style.top.px]="getSupplierLineTopPosition(i)"
+        ></div>
+      }
+
+
+      @for (event of events(); track event) {
+        <app-event-block
+          [event]="event"
+          [top]="event.topPosition"
+          [left]="event.leftPosition"
+          [amount]="event.amount"
+          [pixelsPerWeek]="WEEK_COLUMN_WIDTH_PX"
+          [pixelsPerAmountUnit]="AMOUNT_ROW_HEIGHT_UNIT_PX"
+          (dragEnded)="onDragEnded($event.$event, $event.event)"
+          (dragStarted)="onDragStarted($event.$event, $event.event)"
+          (dragMoved)="onDragMoved($event.$event, $event.event)"
+          (editEvent)="onEditEvent($event)"
+        ></app-event-block>
+      }
+
+    </div>
+  </div>
+
+  <div class="footer p-4"></div>-->
+}
+

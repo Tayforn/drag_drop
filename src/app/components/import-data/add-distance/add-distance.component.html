@@ -1,0 +1,32 @@
+<h2 mat-dialog-title>Add distance</h2>
+<mat-dialog-content>
+  <!--<form [formGroup]="formSupplier">
+    <div>
+      <mat-form-field>
+        <mat-label>Suppliers id</mat-label>
+        <input matInput formControlName="id" placeholder="AST-0000000"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Suppliers name</mat-label>
+        <input matInput formControlName="name"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Suppliers capacity</mat-label>
+        <input matInput type="number" formControlName="capacity" placeholder="2000"/>
+      </mat-form-field>
+    </div>
+  </form>
+  <p class="text-center">or upload from file</p>-->
+  <h3>Upload distance Producer -> Producer</h3>
+  <input type="file" (change)="onDistanceDemand($event)" accept=".csv" />
+  <h3>Upload distance Breeder -> Producer</h3>
+  <input type="file" (change)="onDistanceSuppliers($event)" accept=".csv" />
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-button (click)="onCloseDialog()">Close</button>
+  <button mat-button (click)="onCloseDialog(false)" [disabled]="distanceSuppliers().length === 0 || distanceDemand().length === 0">Ok</button>
+</mat-dialog-actions>

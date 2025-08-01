@@ -1,0 +1,12 @@
+<h2 mat-dialog-title>Import Data</h2>
+<mat-dialog-content class="flex flex-column">
+  <input type="file" (change)="onImportData($event)" accept=".json" />
+  <mat-hint class="pt-2" align="end">After import and pressing Ok all current data will be missed</mat-hint>
+  <p [style.color]="(errorMessage.type === 'error') ? 'red' : 'green'" class="font-bold">
+    {{errorMessage.message}}
+  </p>
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-button (click)="onCloseDialog()">Close</button>
+  <button [disabled]="errorMessage.type !== 'success'" mat-button (click)="onCloseDialog(false)">Ok</button>
+</mat-dialog-actions>

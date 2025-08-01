@@ -1,0 +1,18 @@
+<div [class.is-loading]="loading">
+  <h2 mat-dialog-title>Load Data</h2>
+  <mat-dialog-content class="flex flex-column">
+    <input type="number" matInput placeholder="820" [(ngModel)]="inputId" min="0">
+    <mat-hint class="pt-2" align="end">Insert correct Id of the set</mat-hint>
+    <p [style.color]="(errorMessage.type === 'error') ? 'red' : 'green'" class="font-bold">
+      {{errorMessage.message}}
+    </p>
+  </mat-dialog-content>
+  <mat-dialog-actions>
+    <button [disabled]="loading" mat-button (click)="onCloseDialog()">Close</button>
+    <button [disabled]="!inputId || loading" mat-button (click)="onLoadData()">Load</button>
+  </mat-dialog-actions>
+</div>
+@if (loading) {
+  <mat-spinner style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);"></mat-spinner>
+}
+

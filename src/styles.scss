@@ -1,0 +1,12 @@
+/* You can add global styles to this file, and also import other style files */
+
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif;
+  --p-pink-100: pink;
+  --p-blue-100: #007bff;
+}
+@import 'primeflex/primeflex.scss';
+
+.mat-mdc-form-field {
+  width: 100%;
+}

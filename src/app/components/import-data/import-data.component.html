@@ -1,0 +1,73 @@
+<div class="flex pb-4 w-full relative">
+  <div class="w-6">
+    <h3>Actions</h3>
+    <div class="flex gap-2">
+      <button mat-stroked-button (click)="addSuppliers()">Supplier *.csv</button>
+      <button mat-stroked-button (click)="addDemand()">Demand *.csv</button>
+      <button mat-stroked-button (click)="addDistance()">Distance *.csv</button>
+      <button mat-stroked-button (click)="importData()">Import Data (*.json)</button>
+      <button mat-stroked-button (click)="importData()" disabled>Import Data (*.csv)</button>
+      <button mat-stroked-button (click)="loadData()">Load Data (API)</button>
+      <button mat-stroked-button (click)="exportData()">Export Data</button>
+    </div>
+
+
+  </div>
+  <div class="absolute error-container">
+    <mat-tab-group>
+      <mat-tab >
+        <ng-template mat-tab-label>
+          Demand
+          <span
+            matBadge="{{eventsShiftErrors().length ? eventsShiftErrors().length : null}}"
+            matBadgeColor="warn"
+            matBadgeOverlap="false"
+            class="badge-icon"
+          ></span>
+        </ng-template>
+        <div [style.height.px]="115" class="w-100 border-1 border-1 border-round-xl p-1 overflow-y-auto">
+          @for (err of eventsShiftErrors(); track err) {
+            <div class="error-message" [innerHTML]="err"></div>
+          }
+        </div>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          Suppliers
+          <span
+            matBadge="{{supplierOverflowErrors().length ? supplierOverflowErrors().length : null}}"
+            matBadgeColor="warn"
+            matBadgeOverlap="false"
+            class="badge-icon"
+          ></span>
+        </ng-template>
+        <div [style.height.px]="115" class="w-100 border-1 border-1 border-round-xl p-1 overflow-y-auto">
+          @for (err of supplierOverflowErrors(); track err) {
+            <div class="error-message" [innerHTML]="err"></div>
+          }
+        </div>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          Penalties
+          <span
+            matBadge="{{penaltiesBadge() > 0 ? penaltiesBadge() : null}}"
+            matBadgeColor="warn"
+            matBadgeOverlap="false"
+            class="badge-icon"
+          ></span>
+        </ng-template>
+        <div [style.height.px]="115" class="w-100 border-1 border-1 border-round-xl p-1 overflow-y-auto">
+          <div style="font-weight: 500;">
+            <div>Shift penalties: {{shiftPenalties()}}</div>
+            <div>Unassigned penalties: {{unassignedPenalties().amount}} (#{{unassignedPenalties().demand}} demands)</div>
+            <div>Over Production penalties: {{productionPenalties().over}}</div>
+            <div>Under Production penalties: {{productionPenalties().under}}</div>
+            <div>All Distance: {{allCalcSum().km}}km ({{allCalcSum().min}} min)</div>
+          </div>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
+</div>
+

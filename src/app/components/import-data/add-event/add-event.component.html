@@ -1,0 +1,58 @@
+<h2 mat-dialog-title>Add Demand</h2>
+<mat-dialog-content>
+ <!-- <form [formGroup]="formEvent">
+    <div>
+      <mat-form-field>
+        <mat-label>Demand id</mat-label>
+        <input matInput formControlName="id" placeholder="ST-0000000"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Demand name</mat-label>
+        <input matInput formControlName="name"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Demand amount</mat-label>
+        <input matInput type="number" formControlName="amount" placeholder="2000"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Demand date week</mat-label>
+        <input matInput formControlName="date" placeholder="2025-W01"/>
+        <mat-hint align="end">This is a start date week</mat-hint>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Max shift weeks early</mat-label>
+        <input matInput formControlName="maxShiftWeeksEarly" placeholder="2"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Max shift weeks late</mat-label>
+        <input matInput formControlName="maxShiftWeeksLate" placeholder="2"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Supplier</mat-label>
+        <mat-select formControlName="supplierId">
+          @for (supplier of suppliers(); track supplier) {
+            <mat-option [value]="supplier.id">{{supplier.name}}</mat-option>
+          }
+        </mat-select>
+        <mat-hint align="end">Choose any, than you can move it to another</mat-hint>
+      </mat-form-field>
+    </div>
+  </form>-->
+  <input type="file" (change)="onDemandUpload($event)" accept=".csv" />
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-button (click)="onCloseDialog()">Close</button>
+  <button mat-button (click)="onCloseDialog(false)">Ok</button>
+</mat-dialog-actions>

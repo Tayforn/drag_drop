@@ -1,0 +1,64 @@
+.event-block {
+  position: absolute;
+  border-radius: 4px;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  &:not(.cdk-drag-preview) {
+    transform: none!important;
+  }
+
+  .event-content {
+    padding: 5px;
+    color: white;
+    font-size: 11px;
+    text-align: center;
+    font-weight: 500;
+
+    h3 {
+      margin: 0;
+      font-size: 1em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    p {
+      margin: 0;
+      line-height: 1.2;
+    }
+  }
+}
+
+.cdk-drag-preview {
+  // Styles for the element currently being dragged (the ghost)
+  opacity: 0.7; // Make it semi-transparent
+  box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
+  0 8px 10px 1px rgba(0, 0, 0, 0.14),
+  0 3px 14px 2px rgba(0, 0, 0, 0.12); // Add a stronger shadow for visual depth
+}
+
+// You might also want to slightly de-emphasize the original block that stays behind
+.cdk-drag-original {
+  // This class is applied to the original element that stays in its place
+  // while the preview is being dragged.
+  opacity: 0.5; // Make the original block semi-transparent
+}
+
+// Optional: If you want to customize the placeholder (where it drops in a list)
+// For your absolute positioning, this might not be directly relevant for the "target" spot,
+// but good to know for general drag-and-drop.
+.cdk-drag-placeholder {
+  opacity: 0; // Hide the original element that shifts in a list
+}
+
+.event-placeholder {
+  position: absolute;
+  background-color: rgba(140, 175, 255, 0.4); // Semi-transparent blue
+  border: 1px dashed #4a80e6; // Dashed border
+  border-radius: 4px;
+  box-sizing: border-box;
+  z-index: 1; // Ensure it's above grid lines but below the dragging element
+}

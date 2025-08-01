@@ -1,0 +1,29 @@
+<h2 mat-dialog-title>Add suppliers</h2>
+<mat-dialog-content>
+  <!--<form [formGroup]="formSupplier">
+    <div>
+      <mat-form-field>
+        <mat-label>Suppliers id</mat-label>
+        <input matInput formControlName="id" placeholder="AST-0000000"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Suppliers name</mat-label>
+        <input matInput formControlName="name"/>
+      </mat-form-field>
+    </div>
+    <div>
+      <mat-form-field>
+        <mat-label>Suppliers capacity</mat-label>
+        <input matInput type="number" formControlName="capacity" placeholder="2000"/>
+      </mat-form-field>
+    </div>
+  </form>
+  <p class="text-center">or upload from file</p>-->
+  <input type="file" (change)="onSuppliersUpload($event)" accept=".csv" />
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-button (click)="onCloseDialog()">Close</button>
+  <button mat-button (click)="onCloseDialog(false)">Ok</button>
+</mat-dialog-actions>
