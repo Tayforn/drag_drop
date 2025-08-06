@@ -173,11 +173,14 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
     const newGroupedEvents: EventData[] = Array.from(groups.values()).map(group => {
       const totalAmount = group.reduce((sum, item) => sum + (item.amount || 0), 0);
+      const ids = group.map(event => event.id)
       return {
         ...group[0],
         amount: totalAmount,
+        supplierId: 'unassigned',
         productType: 'M',
-        id: `${group[0].startWeek}-${Date.now()}`
+        containIds: ids,
+        id: `${group[0].startWeek}-${Date.now()}`,
       };
     });
 
@@ -526,7 +529,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     this.cdr.detectChanges(); // Force change detection to update placeholder position quickly during drag
   }
 
-  onDragEnded(event: CdkDragEnd, eventData: EventData): void {
+  onDragEnded(event: CdkDragEnd, eventData: EventData & { containIds?: string[] }): void {
     // Hide placeholder and clear dragging event reference
     this.showPlaceholder = false;
     this.draggingEvent = null;
@@ -581,17 +584,15 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     // check for events that should start from one week and finish in one week
     let notAllowed = false;
     if (newSupplierId !== 'unassigned') {
-      const eventsInLane = this.events().filter(e => (e.supplierId === newSupplierId)).filter(e => !((e.id === eventData.id) && (e.productType === eventData.productType)));
-      const weekRange = this.dateUtils.generateWeekRange(newStartWeekString, newEndWeekString).map(w => `${w.year}-${w.label}`);
-      eventsInLane.forEach((evInLane) => {
-        const weekRangeEvInLine = this.dateUtils.generateWeekRange(evInLane.startWeek, evInLane.endWeek).map(w => `${w.year}-${w.label}`);
-        const hasCommon = weekRange.some(item => weekRangeEvInLine.includes(item));
-        if (hasCommon) {
-          if ((evInLane.startWeek !== newStartWeekString) || (evInLane.endWeek !== newEndWeekString)) {
-            notAllowed = true;
-          }
-        }
-      });
+      let eventsInLane = [];
+      if (eventData.containIds) {
+        eventsInLane = this.events().filter(event => eventData.containIds?.includes(event.id))
+      } else {
+        eventsInLane = this.events().filter(e => (e.supplierId === newSupplierId)).filter(e => !((e.id === eventData.id) && (e.productType === eventData.productType)));
+      }
+
+      notAllowed = this.hasWeekOverlap(eventsInLane, newStartWeekString, newEndWeekString)
+
       if (notAllowed) {
         newSupplierId = eventData.supplierId;
         newStartWeekString = eventData.startWeek;
@@ -600,19 +601,37 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       }
     }
 
-    if (eventData.productType === 'M') {
-      const newSupplier = this.suppliers.find(s => s.id === newSupplierId);
+    if (!notAllowed && eventData.productType === 'M')
+      if (newSupplierId !== 'unassigned') {
+        const newSupplier = this.suppliers.find(s => s.id === newSupplierId);
+        const filteredEvents = this.events().filter(e => e.date === eventData.date && e.supplierId === newSupplierId)
+        const totalAmount = filteredEvents.reduce((sum, item) => sum + (item.amount || 0), 0) + eventData.amount;
 
-      if (newSupplier?.capacity && newSupplier?.capacity < eventData.amount) {
-        const newEventAmount = eventData.amount - newSupplier?.capacity
-        const newEvent: EventData = { ...eventData, amount: newEventAmount, supplierId: 'unassigned', id: `${eventData.startWeek}-${Date.now()}` }
-        eventData.amount = eventData.amount - newEventAmount;
+        const unassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
 
+        if (newSupplier?.capacity && newSupplier?.capacity < totalAmount) {
+          const newEventAmount = totalAmount - newSupplier?.capacity;
 
-        const currentEvents = this.events();
-        this.events.set([...currentEvents, newEvent]);
+          if (!unassignedEvents.length) {
+            const newEvent: EventData & { containIds?: string[] } = { ...eventData, amount: newEventAmount, supplierId: 'unassigned', id: `${eventData.startWeek}-${Date.now()}` }
+            eventData.amount = eventData.amount - newEventAmount;
+
+            const currentEvents = this.events();
+            this.events.set([...currentEvents, newEvent]);
+          } else {
+            unassignedEvents[0].amount += newEventAmount
+          }
+        }
+      } else {
+        const unassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
+        if (unassignedEvents.length > 0) {
+          eventData.amount += unassignedEvents[0].amount;
+
+          this.events.update(events =>
+            events.filter(e => !unassignedEvents.includes(e))
+          );
+        }
       }
-    }
 
     // --- Update Event Data & Re-render ---
     // Create a new array reference and update the specific event to trigger OnPush
@@ -640,7 +659,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     // The previous calls to getEventLeftPosition(e) and getEventTopPosition(e) were insufficient
     // because they didn't account for the new stacking.
 
-    if (eventData.productType === 'F')
+    if (eventData.productType === 'F' && (newStartWeekString !== eventData.startWeek))
       this.updateEventsWithMaleGroups(eventData, newStartWeekString);
 
     this.calculateAllEventPositions(); // Re-calculate base positions for all events
@@ -653,6 +672,21 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       event.source.element.nativeElement.style.transform = '';
       this.cdr.detectChanges(); // Trigger final change detection
     }, 0);
+  }
+
+  hasWeekOverlap(events: EventData[], startWeek: string, endWeek: string) {
+    let notAllowed = false;
+    const weekRange = this.dateUtils.generateWeekRange(startWeek, endWeek).map(w => `${w.year}-${w.label}`);
+    events.forEach((evInLane) => {
+      const weekRangeEvInLine = this.dateUtils.generateWeekRange(evInLane.startWeek, evInLane.endWeek).map(w => `${w.year}-${w.label}`);
+      const hasCommon = weekRange.some(item => weekRangeEvInLine.includes(item));
+      if (hasCommon) {
+        if ((evInLane.startWeek !== startWeek) || (evInLane.endWeek !== endWeek)) {
+          notAllowed = true;
+        }
+      }
+    });
+    return notAllowed;
   }
 
   changeLeftPositionToRelatedEvent(eventData: EventData): void {

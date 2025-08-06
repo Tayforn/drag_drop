@@ -6,6 +6,7 @@
     "start": "ng serve",
     "build": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
+    "deploy": "ng build --configuration production --base-href \"https://Tayforn.github.io/drag_drop/\" && npx angular-cli-ghpages --dir=dist/drag_drop/browser",
     "test": "ng test"
   },
   "private": true,
