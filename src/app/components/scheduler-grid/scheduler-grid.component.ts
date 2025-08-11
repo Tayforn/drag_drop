@@ -102,7 +102,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
           this.suppliers = suppliers;
           if ((suppliers.length > 0) && (events.length > 0)) {
             this.generateWeekRange(events);
-            this.events.set(events.filter(e => e.productType === 'F'));
+            this.events.set(events);
 
             this.updateEventsWithMaleGroups();
             this.checkForUnassignedEvents();
@@ -125,12 +125,16 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
   }
 
   private updateEventsWithMaleGroups(eventData?: EventData, newStartWeek?: string) {
-    const currentEvents = this.events();
+    const events = this.events() as (EventData & { containIds?: string[] })[];
+    const currentEvents = events;
     const sourceEvents = currentEvents.filter(ev => ev.productType === 'F');
     const groupedEvents = currentEvents.filter(ev => ev.productType === 'M');
 
     if (!eventData) {
-      const newGroupedEvents = this.generateEventsWithMaleGroups(sourceEvents);
+      if (events.filter(ev => ev?.containIds?.length).length > 0)
+        return;
+
+      const newGroupedEvents = this.generateEventsWithMaleGroups(events.filter(ev => ev.productType === 'F'));
 
       this.events.set([...sourceEvents, ...newGroupedEvents]);
       return;
