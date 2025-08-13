@@ -125,14 +125,14 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
   }
 
   private updateEventsWithMaleGroups(eventData?: EventData, newStartWeek?: string) {
-    const events = this.events() as (EventData & { containIds?: string[] })[];
+    const events = this.events() as EventData[];
     const currentEvents = events;
     const sourceEvents = currentEvents.filter(ev => ev.productType === 'F');
     const groupedEvents = currentEvents.filter(ev => ev.productType === 'M');
 
     if (!eventData) {
-      if (events.filter(ev => ev?.containIds?.length).length > 0)
-        return;
+      // if (events.filter(ev => ev?.containIds?.length).length > 0)
+      //   return;
 
       const newGroupedEvents = this.generateEventsWithMaleGroups(events.filter(ev => ev.productType === 'F'));
 
@@ -177,13 +177,11 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
     const newGroupedEvents: EventData[] = Array.from(groups.values()).map(group => {
       const totalAmount = group.reduce((sum, item) => sum + (item.amount || 0), 0);
-      const ids = group.map(event => event.id)
       return {
         ...group[0],
         amount: totalAmount,
         supplierId: 'unassigned',
         productType: 'M',
-        containIds: ids,
         id: `${group[0].startWeek}-${Date.now()}`,
       };
     });
@@ -533,7 +531,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     this.cdr.detectChanges(); // Force change detection to update placeholder position quickly during drag
   }
 
-  onDragEnded(event: CdkDragEnd, eventData: EventData & { containIds?: string[] }): void {
+  onDragEnded(event: CdkDragEnd, eventData: EventData): void {
     // Hide placeholder and clear dragging event reference
     this.showPlaceholder = false;
     this.draggingEvent = null;
@@ -587,37 +585,38 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
     // check for events that should start from one week and finish in one week
     let notAllowed = false;
-    if (newSupplierId !== 'unassigned') {
-      let eventsInLane = [];
-      if (eventData.containIds) {
-        eventsInLane = this.events().filter(event => eventData.containIds?.includes(event.id))
-      } else {
-        eventsInLane = this.events().filter(e => (e.supplierId === newSupplierId)).filter(e => !((e.id === eventData.id) && (e.productType === eventData.productType)));
-      }
+
+    console.log(`eventData.startWeek - newStartWeekString | ${eventData.startWeek} - ${newStartWeekString}`);
+
+    if (eventData.productType === 'M' && eventData.startWeek !== newStartWeekString) {
+      notAllowed = true
+    }
+
+    if (newSupplierId !== 'unassigned' && !notAllowed) {
+      const eventsInLane = this.events().filter(e => (e.supplierId === newSupplierId)).filter(e => !((e.id === eventData.id) && (e.productType === eventData.productType)));
 
       notAllowed = this.hasWeekOverlap(eventsInLane, newStartWeekString, newEndWeekString)
+    }
 
-      if (notAllowed) {
-        newSupplierId = eventData.supplierId;
-        newStartWeekString = eventData.startWeek;
-        newEndWeekString = eventData.endWeek;
-        this._snackBar.open('Not allowed', undefined, { duration: 3000 });
-      }
+    if (notAllowed) {
+      newSupplierId = eventData.supplierId;
+      newStartWeekString = eventData.startWeek;
+      newEndWeekString = eventData.endWeek;
+      this._snackBar.open('Not allowed', undefined, { duration: 3000 });
     }
 
     if (!notAllowed && eventData.productType === 'M')
       if (newSupplierId !== 'unassigned') {
         const newSupplier = this.suppliers.find(s => s.id === newSupplierId);
-        const filteredEvents = this.events().filter(e => e.date === eventData.date && e.supplierId === newSupplierId)
+        const filteredEvents = this.events().filter(e => e.date === eventData.date && e.supplierId === newSupplierId && e.id !== eventData.id)
         const totalAmount = filteredEvents.reduce((sum, item) => sum + (item.amount || 0), 0) + eventData.amount;
 
         const unassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
-
         if (newSupplier?.capacity && newSupplier?.capacity < totalAmount) {
           const newEventAmount = totalAmount - newSupplier?.capacity;
 
           if (!unassignedEvents.length) {
-            const newEvent: EventData & { containIds?: string[] } = { ...eventData, amount: newEventAmount, supplierId: 'unassigned', id: `${eventData.startWeek}-${Date.now()}` }
+            const newEvent: EventData = { ...eventData, amount: newEventAmount, supplierId: 'unassigned', id: `${eventData.startWeek}-${Date.now()}` }
             eventData.amount = eventData.amount - newEventAmount;
 
             const currentEvents = this.events();
