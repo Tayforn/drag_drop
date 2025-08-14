@@ -171,10 +171,10 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       groups.get(ev.startWeek)!.push(ev);
     }
 
-    const durationWeeks = 9;
+    const durationWeeks = 10;
 
     const newGroupedEvents: EventData[] = Array.from(groups.values()).map(group => {
-      const newEndWeekDate = this.dateUtils.addWeeks(this.dateUtils.parseWeekString(group[0].startWeek), durationWeeks);
+      const newEndWeekDate = this.dateUtils.addWeeks(this.dateUtils.parseWeekString(group[0].startWeek), durationWeeks - 1);
       const newEndWeekString = this.dateUtils.getWeekString(newEndWeekDate);
 
       const totalAmount = group.reduce((sum, item) => sum + (item.amount || 0), 0);
