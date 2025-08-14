@@ -131,11 +131,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     const groupedEvents = currentEvents.filter(ev => ev.productType === 'M');
 
     if (!eventData) {
-      // if (events.filter(ev => ev?.containIds?.length).length > 0)
-      //   return;
-
       const newGroupedEvents = this.generateEventsWithMaleGroups(events.filter(ev => ev.productType === 'F'));
-
       this.events.set([...sourceEvents, ...newGroupedEvents]);
       return;
     }
@@ -175,13 +171,19 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       groups.get(ev.startWeek)!.push(ev);
     }
 
+    const durationWeeks = 9;
+
     const newGroupedEvents: EventData[] = Array.from(groups.values()).map(group => {
+      const newEndWeekDate = this.dateUtils.addWeeks(this.dateUtils.parseWeekString(group[0].startWeek), durationWeeks);
+      const newEndWeekString = this.dateUtils.getWeekString(newEndWeekDate);
+
       const totalAmount = group.reduce((sum, item) => sum + (item.amount || 0), 0);
       return {
         ...group[0],
         amount: totalAmount,
         supplierId: 'unassigned',
         productType: 'M',
+        endWeek: newEndWeekString,
         id: `${group[0].startWeek}-${Date.now()}`,
       };
     });
@@ -585,16 +587,27 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
     // check for events that should start from one week and finish in one week
     let notAllowed = false;
-
-    console.log(`eventData.startWeek - newStartWeekString | ${eventData.startWeek} - ${newStartWeekString}`);
+    let notAllowedMessage = 'Not allowed';
 
     if (eventData.productType === 'M' && eventData.startWeek !== newStartWeekString) {
-      notAllowed = true
+      notAllowed = true;
+      notAllowedMessage = 'Not allowed, only female blocks can be move left and right';
+    }
+
+    if (eventData.productType === 'F' && newSupplierId === 'unassigned') {
+      if (newStartWeekString !== eventData.date) {
+        newSupplierId = 'unassigned';
+        newStartWeekString = eventData.date;
+
+        const newEndWeekDate = this.dateUtils.addWeeks(this.dateUtils.parseWeekString(newStartWeekString), durationWeeks - 1);
+        newEndWeekString = this.dateUtils.getWeekString(newEndWeekDate);
+
+        this._snackBar.open(notAllowedMessage, undefined, { duration: 3000 });
+      }
     }
 
     if (newSupplierId !== 'unassigned' && !notAllowed) {
       const eventsInLane = this.events().filter(e => (e.supplierId === newSupplierId)).filter(e => !((e.id === eventData.id) && (e.productType === eventData.productType)));
-
       notAllowed = this.hasWeekOverlap(eventsInLane, newStartWeekString, newEndWeekString)
     }
 
@@ -602,7 +615,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       newSupplierId = eventData.supplierId;
       newStartWeekString = eventData.startWeek;
       newEndWeekString = eventData.endWeek;
-      this._snackBar.open('Not allowed', undefined, { duration: 3000 });
+      this._snackBar.open(notAllowedMessage, undefined, { duration: 3000 });
     }
 
     if (!notAllowed && eventData.productType === 'M')
@@ -695,7 +708,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
   changeLeftPositionToRelatedEvent(eventData: EventData): void {
     const find = this.events().find(e => (e.id === eventData.id) && (e.productType === eventData.productType));
     if (find) {
-      const durationWeeks = (find.productType === 'F') ? 10 : 18;
+      const durationWeeks = (find.productType === 'M') ? 10 : 18;
       const newEndWeekDate = this.dateUtils.addWeeks(this.dateUtils.parseWeekString(find.startWeek), durationWeeks);
       const newEndWeekString = this.dateUtils.getWeekString(newEndWeekDate);
 
