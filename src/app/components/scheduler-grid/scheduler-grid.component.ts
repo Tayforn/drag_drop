@@ -709,7 +709,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     const find = this.events().find(e => (e.id === eventData.id) && (e.productType === eventData.productType));
     if (find) {
       const durationWeeks = (find.productType === 'M') ? 10 : 18;
-      const newEndWeekDate = this.dateUtils.addWeeks(this.dateUtils.parseWeekString(find.startWeek), durationWeeks);
+      const newEndWeekDate = this.dateUtils.addWeeks(this.dateUtils.parseWeekString(find.startWeek), durationWeeks - 1);
       const newEndWeekString = this.dateUtils.getWeekString(newEndWeekDate);
 
       const updatedEvents = this.events().map(ev => {
