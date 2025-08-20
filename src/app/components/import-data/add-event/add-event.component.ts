@@ -96,7 +96,7 @@ export class AddEventComponent {
               result.data.forEach((item: any) => {
                 if (item.hasOwnProperty('amount') && item.hasOwnProperty('date') && item.hasOwnProperty('id') && item.hasOwnProperty('max_shift_weeks_early') && item.hasOwnProperty('max_shift_weeks_late') && item.hasOwnProperty('product_type')) {
                   arr.push({
-                    id: `${item.id}_${item.date}`,
+                    id: `${item.id}`,
                     name: item.id,
                     startWeek: item.date,
                     endWeek: this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(item.date), (item.product_type === 'F') ? 18 : 10)),

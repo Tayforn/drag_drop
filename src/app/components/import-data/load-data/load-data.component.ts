@@ -1,16 +1,16 @@
-import {Component, inject} from '@angular/core';
-import {MatFormFieldModule} from '@angular/material/form-field';
-import {MatInputModule} from '@angular/material/input';
-import {FormsModule, ReactiveFormsModule} from '@angular/forms';
-import {MatButtonModule} from '@angular/material/button';
-import {MatDialogActions, MatDialogContent, MatDialogRef, MatDialogTitle} from '@angular/material/dialog';
-import {HttpService} from '../../../services/http.service';
-import {combineLatest} from 'rxjs';
-import {Supplier} from '../../../models/supplier.model';
-import {EventData} from '../../../models/event.model';
-import {DistanceDemand, DistanceSuppliers} from '../../../models/distance.model';
-import {MatProgressSpinner} from '@angular/material/progress-spinner';
-import {addWeeks, getISOWeek, setWeek, setYear, startOfWeek} from 'date-fns';
+import { Component, inject } from '@angular/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialogActions, MatDialogContent, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
+import { HttpService } from '../../../services/http.service';
+import { combineLatest } from 'rxjs';
+import { Supplier } from '../../../models/supplier.model';
+import { EventData } from '../../../models/event.model';
+import { DistanceDemand, DistanceSuppliers } from '../../../models/distance.model';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { addWeeks, getISOWeek, setWeek, setYear, startOfWeek } from 'date-fns';
 
 
 @Component({
@@ -55,13 +55,14 @@ export class LoadDataComponent {
         this.api.getProducers(this.inputId),
         this.api.getBreederProducers(this.inputId),
         this.api.getProducerProducers(this.inputId),
+        this.api.getProducerBreeder(this.inputId)
       ]).subscribe(
-        ([schedules, breeders, producers, breederProducers, producerProducers]) => {
+        ([schedules, breeders, producers, breederProducers, producerProducers, producerBreeder]) => {
           const suppliers: Supplier[] = [];
           if (breeders.success) {
             breeders.data.forEach((breeder) => {
               suppliers.push({
-                id: breeder.external_id,
+                id: `${breeder.id}`,
                 name: breeder.name,
                 capacity: breeder.capacity,
               });
@@ -72,7 +73,7 @@ export class LoadDataComponent {
           if (producers.success) {
             producers.data.forEach((producer) => {
               const event: any = {
-                id: `${producer.external_id}_${producer.week_in}`,
+                id: `${producer.id}`,
                 name: producer.name,
                 date: producer.week_in,
                 amount: producer.capacity,
@@ -111,7 +112,25 @@ export class LoadDataComponent {
             })
           }
 
-          this.onCloseDialog({suppliers, events, distanceSuppliers, distanceDemand})
+          const producerBreederEvents: EventData[] = [];
+          if (producerBreeder && producerBreeder.length) {
+
+            producerBreeder.forEach((producerBreeder: any) => {
+              const event: any = {
+                id: `${producerBreeder.producer_id ? producerBreeder.producer_id : producerBreeder.id}`,
+                name: `${producerBreeder.producer_id ? producerBreeder.producer_id : producerBreeder.id}_${producerBreeder.date}`,
+                date: producerBreeder.date,
+                amount: producerBreeder.amount,
+                productType: producerBreeder.producer_id ? 'F' : 'M',
+                supplierId: producerBreeder.breeder_id ? `${producerBreeder.breeder_id}` : 'unassigned'
+              }
+              const eventData = new EventData(event);
+              eventData.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventData.startWeek), 18));
+              producerBreederEvents.push(eventData);
+            });
+          }
+
+          this.onCloseDialog({ suppliers, events, distanceSuppliers, distanceDemand, producerBreederEvents })
 
           this.loading = false;
         }, error => {

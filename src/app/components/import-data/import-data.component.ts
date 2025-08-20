@@ -1,23 +1,24 @@
-import {Component, effect, inject, input, signal, WritableSignal} from '@angular/core';
-import {DataService} from '../../services/data.service';
+import { Component, effect, inject, input, signal, WritableSignal } from '@angular/core';
+import { DataService } from '../../services/data.service';
 import { Supplier } from '../../models/supplier.model';
-import {EventData} from '../../models/event.model';
-import {DateUtilsService} from '../../services/date-utils.service';
-import {MatButtonModule} from '@angular/material/button';
+import { EventData } from '../../models/event.model';
+import { DateUtilsService } from '../../services/date-utils.service';
+import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
-import {AddSupplierComponent} from './add-supplier/add-supplier.component';
-import {AddEventComponent} from './add-event/add-event.component';
-import {ImportDialogComponent} from './import-dialog/import-dialog.component';
-import {MatInputModule} from '@angular/material/input';
-import {MatFormFieldModule} from '@angular/material/form-field';
-import {FormsModule} from '@angular/forms';
-import {combineLatest} from 'rxjs';
+import { AddSupplierComponent } from './add-supplier/add-supplier.component';
+import { AddEventComponent } from './add-event/add-event.component';
+import { ImportDialogComponent } from './import-dialog/import-dialog.component';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { FormsModule } from '@angular/forms';
+import { combineLatest } from 'rxjs';
 import Papa from 'papaparse';
-import {MatTabsModule} from '@angular/material/tabs';
-import {MatBadgeModule} from '@angular/material/badge';
-import {AddDistanceComponent} from './add-distance/add-distance.component';
-import {DistanceDemand, DistanceSuppliers} from '../../models/distance.model';
-import {LoadDataComponent} from './load-data/load-data.component';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatBadgeModule } from '@angular/material/badge';
+import { AddDistanceComponent } from './add-distance/add-distance.component';
+import { DistanceDemand, DistanceSuppliers } from '../../models/distance.model';
+import { LoadDataComponent } from './load-data/load-data.component';
+import { ApiExportComponent } from './api-export/api-export.component';
 
 @Component({
   selector: 'app-import-data',
@@ -36,13 +37,13 @@ export class ImportDataComponent {
   supplierOverflowErrors = input<string[]>([]);
   eventsShiftErrors = input<string[]>([]);
   shiftPenalties = input<number>(0);
-  allCalcSum = input<{km: number, min: number}>({km: 0, min: 0});
-  unassignedPenalties = input<{amount: number, demand: number}>({amount: 0, demand: 0});
-  productionPenalties = input<{over: number, under: number}>({over: 0, under: 0});
+  allCalcSum = input<{ km: number, min: number }>({ km: 0, min: 0 });
+  unassignedPenalties = input<{ amount: number, demand: number }>({ amount: 0, demand: 0 });
+  productionPenalties = input<{ over: number, under: number }>({ over: 0, under: 0 });
 
   suppliers: WritableSignal<Supplier[]> = signal([]);
   events: WritableSignal<EventData[]> = signal([]);
-  distance: WritableSignal<{demand: DistanceDemand[], suppliers: DistanceSuppliers[]}> = signal({demand: [], suppliers: []});
+  distance: WritableSignal<{ demand: DistanceDemand[], suppliers: DistanceSuppliers[] }> = signal({ demand: [], suppliers: [] });
   penaltiesBadge: WritableSignal<number> = signal(0);
 
   readonly dialog = inject(MatDialog);
@@ -97,7 +98,7 @@ export class ImportDataComponent {
       width: '400px',
     });
 
-    dialogRef.afterClosed().subscribe((result: {demand: DistanceDemand[], suppliers: DistanceSuppliers[]}) => {
+    dialogRef.afterClosed().subscribe((result: { demand: DistanceDemand[], suppliers: DistanceSuppliers[] }) => {
       if (result) {
         /*this.events.set(this.dataService.events$.getValue());
         this.events.update((e) => {
@@ -114,7 +115,7 @@ export class ImportDataComponent {
       width: '400px',
     });
 
-    dialogRef.afterClosed().subscribe((result: {events: EventData[], suppliers: Supplier[]} | null) => {
+    dialogRef.afterClosed().subscribe((result: { events: EventData[], suppliers: Supplier[] } | null) => {
       if (result) {
         this.events.set(result.events);
         this.suppliers.set(result.suppliers);
@@ -128,11 +129,17 @@ export class ImportDataComponent {
     const dialogRef = this.dialog.open(LoadDataComponent, {
       width: '400px',
     });
-    dialogRef.afterClosed().subscribe((result: {events: EventData[], suppliers: Supplier[], distanceSuppliers: DistanceSuppliers[], distanceDemand: DistanceDemand[]} | null) => {
+    dialogRef.afterClosed().subscribe((result: { events: EventData[], suppliers: Supplier[], distanceSuppliers: DistanceSuppliers[], distanceDemand: DistanceDemand[], producerBreederEvents: EventData[] } | null) => {
       if (result) {
-        this.events.set(result.events);
+        if (result.producerBreederEvents) {
+          const evs = this.processLoadedEvents(result.events, result.producerBreederEvents);
+          this.events.set(evs);
+        } else {
+          this.events.set(result.events);
+        }
+
         this.suppliers.set(result.suppliers);
-        this.distance.set({demand: result.distanceDemand, suppliers: result.distanceSuppliers});
+        this.distance.set({ demand: result.distanceDemand, suppliers: result.distanceSuppliers });
         this.dataService.events$.next(this.events());
         this.dataService.suppliers$.next(this.suppliers());
         this.dataService.distance$.next(this.distance());
@@ -140,10 +147,18 @@ export class ImportDataComponent {
     });
   }
 
+  processLoadedEvents(events: EventData[], producerBreederEvents: EventData[]) {
+    const map = new Map<string, EventData>();
+    events.forEach(event => map.set(event.id, event));
+    producerBreederEvents.forEach(event => map.set(event.id, event));
+
+    return Array.from(map.values());
+  }
+
   exportData() {
     const events = this.dataService.events$.getValue();
     const suppliers = this.dataService.suppliers$.getValue();
-    const data = {events: events, suppliers: suppliers};
+    const data = { events: events, suppliers: suppliers };
     const jsonStr = JSON.stringify(data, null, 2); // pretty print
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const timestamp = new Date().toISOString().replace(/[:T]/g, '-').split('.')[0];
@@ -155,23 +170,23 @@ export class ImportDataComponent {
     anchor.click();
     URL.revokeObjectURL(url);
 
-    const eventsSorted =  events.sort((a, b) => {
+    const eventsSorted = events.sort((a, b) => {
       const dateA = this.dateService.parseWeekString(a.date);
       const dateB = this.dateService.parseWeekString(b.date);
       return dateA.getTime() - dateB.getTime();
     }).filter(e => e.productType === 'F').map(e => {
 
-        return {
-          producer_id: e.name,
-          'einstallung_wish_date(sus1)': e.date,
-          'einstallung_real_date': e.startWeek,
-          producer_name: e.name,
-          'demand_femal_cap': e.amount,
-          'demand_male_cap': e.amount,
-          aufzucht_id: e.supplierId,
-          aufzucht_name: suppliers.find(s => s.id === e.supplierId)?.name,
-          aufzucht_cap: suppliers.find(s => s.id === e.supplierId)?.capacity,
-        }
+      return {
+        producer_id: e.name,
+        'einstallung_wish_date(sus1)': e.date,
+        'einstallung_real_date': e.startWeek,
+        producer_name: e.name,
+        'demand_femal_cap': e.amount,
+        'demand_male_cap': e.amount,
+        aufzucht_id: e.supplierId,
+        aufzucht_name: suppliers.find(s => s.id === e.supplierId)?.name,
+        aufzucht_cap: suppliers.find(s => s.id === e.supplierId)?.capacity,
+      }
 
     });
 
@@ -185,6 +200,22 @@ export class ImportDataComponent {
 
     aCsv.click();
     URL.revokeObjectURL(urlCsv);
+  }
+
+  exportDataByApi() {
+    const dialogRef = this.dialog.open(ApiExportComponent, {
+      width: '400px'
+    });
+    dialogRef.afterClosed().subscribe((result: { events: EventData[], suppliers: Supplier[], distanceSuppliers: DistanceSuppliers[], distanceDemand: DistanceDemand[] } | null) => {
+      if (result) {
+        this.events.set(result.events);
+        this.suppliers.set(result.suppliers);
+        this.distance.set({ demand: result.distanceDemand, suppliers: result.distanceSuppliers });
+        this.dataService.events$.next(this.events());
+        this.dataService.suppliers$.next(this.suppliers());
+        this.dataService.distance$.next(this.distance());
+      }
+    });
   }
 
   /*onSuppliersSelect(event: Event): void {

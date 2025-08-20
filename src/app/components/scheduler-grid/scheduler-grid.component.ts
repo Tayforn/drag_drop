@@ -131,8 +131,9 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     const groupedEvents = currentEvents.filter(ev => ev.productType === 'M');
 
     if (!eventData) {
-      const newGroupedEvents = this.generateEventsWithMaleGroups(events.filter(ev => ev.productType === 'F'));
-      this.events.set([...sourceEvents, ...newGroupedEvents]);
+      const newGroupedEvents = this.generateEventsWithMaleGroups(events.filter(ev => ev.productType === 'F' && ev.supplierId === 'unassigned'));
+      const loadedMaleEvents = currentEvents.filter(ev => ev.productType === 'M' && ev.supplierId !== 'unassigned');
+      this.events.set([...sourceEvents, ...newGroupedEvents, ...loadedMaleEvents]);
       return;
     }
 

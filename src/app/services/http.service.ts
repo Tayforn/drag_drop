@@ -1,6 +1,6 @@
-import {Injectable} from '@angular/core';
-import {HttpClient} from '@angular/common/http';
-import {Observable} from 'rxjs';
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 export interface ScheduleResponse {
   cat1: boolean;
@@ -84,34 +84,44 @@ export interface ProducerProducersResponse {
   providedIn: 'root',
 })
 export class HttpService {
-
   baseUrl: string = 'https://supplysolver.bytebrand.net';
 
   constructor(private http: HttpClient) {
   }
 
   private get<T>(url: string): Observable<T> {
-    return this.http.get<T>(`${this.baseUrl}/${url}`, {headers: {'Content-Type': 'application/json'}});
+    return this.http.get<T>(`${this.baseUrl}/${url}`, { headers: { 'Content-Type': 'application/json' } });
   }
 
-  public getSchedules(id: number): Observable<{success: boolean, data: ScheduleResponse[]}> {
+  private post<T>(url: string, data: any): Observable<T> {
+    return this.http.post<T>(`${this.baseUrl}/${url}`, data, { headers: { 'Content-Type': 'application/json' } });
+  }
+
+  public getSchedules(id: number): Observable<{ success: boolean, data: ScheduleResponse[] }> {
     return this.get<{ data: ScheduleResponse[], success: boolean }>(`hotCrud/getCollection/getSchedules/PlanningSet/${id}`);
   }
 
-  public getBreeders(id: number): Observable<{success: boolean, data: BreedersResponse[]}> {
+  public getBreeders(id: number): Observable<{ success: boolean, data: BreedersResponse[] }> {
     return this.get<{ data: BreedersResponse[], success: boolean }>(`hotCrud/getCollection/getBreeders/PlanningSet/${id}`);
   }
 
-  public getProducers(id: number): Observable<{success: boolean, data: ProducersResponse[]}> {
+  public getProducers(id: number): Observable<{ success: boolean, data: ProducersResponse[] }> {
     return this.get<{ data: ProducersResponse[], success: boolean }>(`hotCrud/getCollection/getProducers/PlanningSet/${id}`);
   }
 
-  public getBreederProducers(id: number): Observable<{success: boolean, data: BreederProducersResponse[]}> {
+  public getBreederProducers(id: number): Observable<{ success: boolean, data: BreederProducersResponse[] }> {
     return this.get<{ data: BreederProducersResponse[], success: boolean }>(`hotCrud/getCollection/getBreederProducers/PlanningSet/${id}`);
   }
 
-  public getProducerProducers(id: number): Observable<{success: boolean, data: ProducerProducersResponse[]}> {
+  public getProducerProducers(id: number): Observable<{ success: boolean, data: ProducerProducersResponse[] }> {
     return this.get<{ data: ProducerProducersResponse[], success: boolean }>(`hotCrud/getCollection/getProducerProducers/PlanningSet/${id}`);
   }
 
+  public setProducerBreeder(id: number, data: any): Observable<any> {
+    return this.post<any>(`api/producerBreederMapping/${id}/batchCreate`, data);
+  }
+
+  public getProducerBreeder(id: number): Observable<any> {
+    return this.get<any>(`api/producerBreederMapping/${id}`);
+  }
 }
