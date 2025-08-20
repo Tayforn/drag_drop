@@ -62,7 +62,7 @@ export class LoadDataComponent {
           if (breeders.success) {
             breeders.data.forEach((breeder) => {
               suppliers.push({
-                id: `${breeder.id}`,
+                id: breeder.external_id,
                 name: breeder.name,
                 capacity: breeder.capacity,
               });
@@ -73,7 +73,7 @@ export class LoadDataComponent {
           if (producers.success) {
             producers.data.forEach((producer) => {
               const event: any = {
-                id: `${producer.id}`,
+                id: `${producer.external_id}_${producer.week_in}`,
                 name: producer.name,
                 date: producer.week_in,
                 amount: producer.capacity,
@@ -81,8 +81,8 @@ export class LoadDataComponent {
               }
               const eventFemale = new EventData(event);
               const eventMale = Object.assign({}, eventFemale);
-              eventFemale.endWeek =  this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18));
-              eventMale.endWeek =  this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventMale.startWeek), 10));
+              eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18));
+              eventMale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventMale.startWeek), 10));
               eventMale.productType = 'M';
               events.push(eventFemale, eventMale);
             });
@@ -117,8 +117,8 @@ export class LoadDataComponent {
 
             producerBreeder.forEach((producerBreeder: any) => {
               const event: any = {
-                id: `${producerBreeder.producer_id ? producerBreeder.producer_id : producerBreeder.id}`,
-                name: `${producerBreeder.producer_id ? producerBreeder.producer_id : producerBreeder.id}_${producerBreeder.date}`,
+                id: `${producerBreeder.producer_id ? `${producerBreeder.producer_id}_${producerBreeder.date}` : producerBreeder.id}`,
+                name: `${producerBreeder.producer_id ? producerBreeder.producer_id : producerBreeder.id}`,
                 date: producerBreeder.date,
                 amount: producerBreeder.amount,
                 productType: producerBreeder.producer_id ? 'F' : 'M',
@@ -129,7 +129,6 @@ export class LoadDataComponent {
               producerBreederEvents.push(eventData);
             });
           }
-
           this.onCloseDialog({ suppliers, events, distanceSuppliers, distanceDemand, producerBreederEvents })
 
           this.loading = false;

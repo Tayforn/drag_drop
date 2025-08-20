@@ -45,8 +45,8 @@ export class ApiExportComponent {
             const producerId = event.id.split('_')[0];
 
             return {
-                producer_id: event.productType === 'M' ? null : +producerId,
-                breeder_id: +event.supplierId ? +event.supplierId : 1,
+                producer_id: event.productType === 'M' ? null : producerId,
+                breeder_id: +event.supplierId ? +event.supplierId : event.supplierId,
                 date: event.startWeek,
                 amount: event.amount
             }

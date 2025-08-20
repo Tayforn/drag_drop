@@ -149,8 +149,8 @@ export class ImportDataComponent {
 
   processLoadedEvents(events: EventData[], producerBreederEvents: EventData[]) {
     const map = new Map<string, EventData>();
-    events.forEach(event => map.set(event.id, event));
-    producerBreederEvents.forEach(event => map.set(event.id, event));
+    events.forEach(event => map.set(`${event.name}${event.productType}`, event));
+    producerBreederEvents.forEach(event => map.set(`${event.name}${event.productType}`, event));
 
     return Array.from(map.values());
   }
