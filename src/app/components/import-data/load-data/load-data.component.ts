@@ -4,13 +4,14 @@ import { MatInputModule } from '@angular/material/input';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogActions, MatDialogContent, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
-import { HttpService } from '../../../services/http.service';
+import { HttpService, ScheduleResponse } from '../../../services/http.service';
 import { combineLatest } from 'rxjs';
 import { Supplier } from '../../../models/supplier.model';
 import { EventData } from '../../../models/event.model';
 import { DistanceDemand, DistanceSuppliers } from '../../../models/distance.model';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { addWeeks, getISOWeek, setWeek, setYear, startOfWeek } from 'date-fns';
+import { DateUtilsService } from '../../../services/date-utils.service';
 
 
 @Component({
@@ -39,7 +40,7 @@ export class LoadDataComponent {
   }
   loading = false;
 
-  constructor(private api: HttpService) {
+  constructor(private api: HttpService, private dateUtils: DateUtilsService) {
   }
 
   onCloseDialog(data: any = null): void {
@@ -72,13 +73,15 @@ export class LoadDataComponent {
           const events: EventData[] = [];
           if (producers.success) {
             producers.data.forEach((producer) => {
+              const schedule = schedules.data.find(s => s.producer === producer.external_id)
               const event: any = {
                 id: `${producer.external_id}_${producer.week_in}`,
                 name: producer.name,
-                date: producer.week_in,
+                date: schedule?.week_in ? schedule?.week_in : producer.week_in,
                 amount: producer.capacity,
                 supplierId: 'unassigned'
               }
+              event.date = this.dateUtils.fixIsoWeek(event.date);
               const eventFemale = new EventData(event);
               const eventMale = Object.assign({}, eventFemale);
               eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18));
@@ -114,18 +117,29 @@ export class LoadDataComponent {
 
           const producerBreederEvents: EventData[] = [];
           if (producerBreeder && producerBreeder.length) {
-
             producerBreeder.forEach((producerBreeder: any) => {
+              const producerBreederDate = this.dateUtils.fixIsoWeek(producerBreeder.date);
+              const startWeekString = producerBreederDate ? producerBreederDate : producerBreeder.date;
+              const endWeekDate =
+                this.dateUtils.addWeeks(
+                  this.dateUtils.parseWeekString(startWeekString),
+                  producerBreeder.producer_id ? 10 - 1 : 18 - 1
+                );
+              const endWeekString = this.dateUtils.getWeekString(endWeekDate);
+
               const event: any = {
                 id: `${producerBreeder.producer_id ? `${producerBreeder.producer_id}_${producerBreeder.date}` : producerBreeder.id}`,
                 name: `${producerBreeder.producer_id ? producerBreeder.producer_id : producerBreeder.id}`,
-                date: producerBreeder.date,
+                date: producerBreederDate,
                 amount: producerBreeder.amount,
                 productType: producerBreeder.producer_id ? 'F' : 'M',
-                supplierId: producerBreeder.breeder_id ? `${producerBreeder.breeder_id}` : 'unassigned'
+                supplierId: producerBreeder.breeder_id ? `${producerBreeder.breeder_id}` : 'unassigned',
+                startWeek: startWeekString,
+                endWeek: endWeekString
               }
               const eventData = new EventData(event);
               eventData.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventData.startWeek), 18));
+
               producerBreederEvents.push(eventData);
             });
           }
@@ -137,7 +151,15 @@ export class LoadDataComponent {
         });
     }
   }
-
+  groupByProducer(data: ScheduleResponse[]): Record<string, ScheduleResponse[]> {
+    return data.reduce((acc, item) => {
+      if (!acc[item.producer]) {
+        acc[item.producer] = [];
+      }
+      acc[item.producer].push(item);
+      return acc;
+    }, {} as Record<string, ScheduleResponse[]>);
+  }
   getDateFromISOWeekStr(weekStr: string): Date {
     const [year, week] = weekStr.split('-W').map(Number);
     return this.getDateFromISOWeek(week, year);

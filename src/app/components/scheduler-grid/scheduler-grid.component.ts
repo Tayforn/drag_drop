@@ -132,8 +132,21 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
     if (!eventData) {
       const newGroupedEvents = this.generateEventsWithMaleGroups(events.filter(ev => ev.productType === 'F' && ev.supplierId === 'unassigned'));
-      const loadedMaleEvents = currentEvents.filter(ev => ev.productType === 'M' && ev.supplierId !== 'unassigned');
-      this.events.set([...sourceEvents, ...newGroupedEvents, ...loadedMaleEvents]);
+      const loadedMaleEvents = currentEvents.filter(ev => ev.productType === 'M' && ev.supplierId !== 'unassigned').map(e => {
+        const endWeekDate =
+          this.dateUtils.addWeeks(
+            this.dateUtils.parseWeekString(e.startWeek),
+            9
+          );
+        const endWeekString = this.dateUtils.getWeekString(endWeekDate);
+        e.endWeek = endWeekString;
+        return e;
+      })
+      console.log(`loadedMaleEvents`, loadedMaleEvents);
+      const newEvents = [...sourceEvents, ...newGroupedEvents, ...loadedMaleEvents]
+      const balansed = this.balanceByDate(newEvents)
+      this.events.set(balansed);
+      console.log(this.events());
       return;
     }
 
@@ -161,6 +174,74 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     ];
 
     this.events.set(newEvents);
+  }
+
+  balanceByDate(events: EventData[]): EventData[] {
+    const grouped: Record<string, EventData[]> = {};
+    for (const e of events) {
+      (grouped[e.date] ??= []).push(e);
+    }
+
+    const result: EventData[] = [...events];
+
+    for (const [date, list] of Object.entries(grouped)) {
+      let sumF = 0;
+      let sumM = 0;
+
+      for (const e of list) {
+        if (e.productType === 'F') sumF += e.amount || 0;
+        else if (e.productType === 'M') sumM += e.amount || 0;
+      }
+
+      const diff = sumF - sumM;
+      if (diff > 0) {
+        const template =
+          list.find(e => e.productType === 'M') ??
+          list.find(e => e.productType === 'F');
+        if (!template) continue;
+
+        const autoId = `${date}_${Math.random().toString(36).slice(2, 8)}`;
+
+        const mCompensation: EventData = {
+          ...template,
+          id: autoId,
+          name: `${template.name}_${Math.random().toString(36).slice(2, 8)}`,
+          productType: 'M',
+          supplierId: 'unassigned',
+          amount: diff,
+        };
+
+        result.push(new EventData(mCompensation));
+      }
+    }
+
+    type UGroup = { keepIndex: number; sum: number };
+    const uGroups: Record<string, UGroup> = {};
+    const toRemove: number[] = [];
+
+    result.forEach((e, idx) => {
+      if (e.productType !== 'M') return;
+      if (e.supplierId !== 'unassigned') return;
+
+      const key = e.startWeek;
+
+      if (!uGroups[key]) {
+        uGroups[key] = { keepIndex: idx, sum: e.amount || 0 };
+      } else {
+        uGroups[key].sum += e.amount || 0;
+        toRemove.push(idx);
+      }
+    });
+
+    for (const g of Object.values(uGroups)) {
+      const keep = result[g.keepIndex];
+      keep.amount = g.sum;
+      keep.supplierId = 'unassigned';
+    }
+
+    toRemove.sort((a, b) => b - a).forEach(i => result.splice(i, 1));
+
+    return result;
   }
 
   generateEventsWithMaleGroups(sourceEvents: EventData[]) {
