@@ -5,6 +5,7 @@
   [unassignedPenalties]="unassignedPenalties()"
   [productionPenalties]="productionPenalties()"
   [allCalcSum]="allCalcSum()"
+  
 ></app-import-data>
 @if (suppliers.length > 0) {
   <div class="flex pb-4 align-items-center justify-content-center">
@@ -206,3 +207,8 @@
   <div class="footer p-4"></div>-->
 }
 
+
+@if (loading) {
+  <div class="is-loading"></div>
+  <mat-spinner style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);"></mat-spinner>
+}

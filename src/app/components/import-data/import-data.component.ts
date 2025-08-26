@@ -132,7 +132,14 @@ export class ImportDataComponent {
     dialogRef.afterClosed().subscribe((result: { events: EventData[], suppliers: Supplier[], distanceSuppliers: DistanceSuppliers[], distanceDemand: DistanceDemand[], producerBreederEvents: EventData[] } | null) => {
       if (result) {
         if (result.producerBreederEvents) {
+          console.log(`result.events`, result.events);
+          console.log(`1661 events`, result.events.find(e => e.name === '1661'));
+
+          console.log(`result.producerBreederEvents`, result.producerBreederEvents);
+          console.log(`1661 pB`, result.producerBreederEvents.find(e => e.name === '1661'));
           const evs = this.processLoadedEvents(result.events, result.producerBreederEvents);
+          console.log(`evs`, evs);
+          console.log(`1661 evs`, evs.find(e => e.name === '1661'));
           this.events.set(evs);
         } else {
           this.events.set(result.events);
@@ -147,31 +154,39 @@ export class ImportDataComponent {
     });
   }
 
-  processLoadedEvents(events: EventData[], producerBreederEvents: EventData[]) {
-    const map = new Map<string, EventData>();
-    events.forEach(event => map.set(`${event.name}${event.productType}`, event));
-    producerBreederEvents.forEach(event => map.set(`${event.name}${event.productType}`, event));
-
-    return Array.from(map.values());
-  }
-
-  // processLoadedEvents(
-  //   events: EventData[],
-  //   producerBreederEvents: EventData[],
-  // ): EventData[] {
+  // processLoadedEvents(events: EventData[], producerBreederEvents: EventData[]) {
   //   const map = new Map<string, EventData>();
-  //   events.forEach(event => map.set(event.name, event));
-
-  //   producerBreederEvents.forEach(event => {
-  //     const old = map.get(event.name);
-  //     map.set(event.name, {
-  //       ...event,
-  //       date: old?.date ?? event.date,
-  //     });
-  //   });
+  //   events.forEach(event => map.set(`${event.name}${event.productType}`, event));
+  //   producerBreederEvents.forEach(event => map.set(`${event.name}${event.productType}`, event));
 
   //   return Array.from(map.values());
   // }
+
+  processLoadedEvents(
+    events: EventData[],
+    producerBreederEvents: EventData[],
+  ): EventData[] {
+    const map = new Map<string, EventData>();
+    events.forEach(event => map.set(`${event.name}${event.productType}`, event));
+
+    producerBreederEvents.forEach(event => {
+      const old = map.get(`${event.name}${event.productType}`);
+      map.set(`${event.name}${event.productType}`, {
+        ...(old ?? {}),
+        ...event,
+        date: old?.date ?? event.date,
+        // startWeek: old?.startWeek ?? event.startWeek,
+        // endWeek: old?.endWeek ?? event.endWeek
+      });
+      if (event.name === '1661') {
+        console.log(`--`, event);
+        console.log(`--old`, old);
+        console.log(`--new`, map.get(`${event.name}${event.productType}`));
+      }
+    });
+
+    return Array.from(map.values());
+  }
 
   exportData() {
     const events = this.dataService.events$.getValue();

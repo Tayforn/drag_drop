@@ -71,13 +71,15 @@ export class LoadDataComponent {
           }
 
           const events: EventData[] = [];
-          if (producers.success) {
+          if (producers.success && schedules.success) {
             producers.data.forEach((producer) => {
               const schedule = schedules.data.find(s => s.producer === producer.external_id)
+              const fromSchedule = schedule?.week_in ? true : false;
+              const weekIn = schedule?.week_in ? schedule?.week_in : producer.week_in;
               const event: any = {
                 id: `${producer.external_id}_${producer.week_in}`,
                 name: producer.name,
-                date: schedule?.week_in ? schedule?.week_in : producer.week_in,
+                date: this.processWeeks(weekIn, fromSchedule, producer.external_id),
                 amount: producer.capacity,
                 supplierId: 'unassigned'
               }
@@ -87,6 +89,7 @@ export class LoadDataComponent {
               eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18));
               eventMale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventMale.startWeek), 10));
               eventMale.productType = 'M';
+              console.log(`eventMale`, eventMale);
               events.push(eventFemale, eventMale);
             });
           }
@@ -143,6 +146,7 @@ export class LoadDataComponent {
               producerBreederEvents.push(eventData);
             });
           }
+          console.log(`eeee`, events);
           this.onCloseDialog({ suppliers, events, distanceSuppliers, distanceDemand, producerBreederEvents })
 
           this.loading = false;
@@ -151,6 +155,15 @@ export class LoadDataComponent {
         });
     }
   }
+
+  processWeeks(dateString: string, fromSchedule: boolean, id: string) {
+    if (!fromSchedule)
+      return dateString;
+    const date = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), -18));
+    console.log(`id: ${id} | before - ${dateString} / after ${date}`);
+    return this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), -18))
+  }
+
   groupByProducer(data: ScheduleResponse[]): Record<string, ScheduleResponse[]> {
     return data.reduce((acc, item) => {
       if (!acc[item.producer]) {

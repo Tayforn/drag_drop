@@ -27,6 +27,7 @@ import { DistanceDemand, DistanceSuppliers } from '../../models/distance.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpService } from '../../services/http.service';
 import { ActivatedRoute } from '@angular/router';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 // Interface for event bounding boxes (useful for overlap calculations)
 interface EventRect {
@@ -45,6 +46,7 @@ interface EventRect {
     DragDropModule,
     EventBlockComponent,
     ImportDataComponent,
+    MatProgressSpinner,
     MatButtonModule
   ],
   templateUrl: './scheduler-grid.component.html',
@@ -90,15 +92,17 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
   allCalcSum: WritableSignal<{ km: number, min: number }> = signal({ km: 0, min: 0 });
 
   setId?: number;
+  loading = false;
 
   private _snackBar = inject(MatSnackBar);
 
-  constructor(private dateUtils: DateUtilsService, private cdr: ChangeDetectorRef, private dataService: DataService, private route: ActivatedRoute) { }
+  constructor(private dateUtils: DateUtilsService, private cdr: ChangeDetectorRef, private api: HttpService, private dataService: DataService, private route: ActivatedRoute) { }
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
       this.setId = +params.get('id')!;
-      console.log(this.setId);
+      if (this.setId)
+        this.loadData()
     });
 
     combineLatest([
@@ -111,6 +115,8 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
           if ((suppliers.length > 0) && (events.length > 0)) {
             this.generateWeekRange(events);
             this.events.set(events);
+            console.log(`events`, events);
+            console.log(`100075`, events.find(e => e.name === 'ST-100075'));
 
             this.updateEventsWithMaleGroups();
             this.checkForUnassignedEvents();
@@ -132,6 +138,135 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     this.cdr.detectChanges();
   }
 
+  loadData() {
+    if (this.setId) {
+      this.loading = true;
+      combineLatest([
+        this.api.getSchedules(this.setId),
+        this.api.getBreeders(this.setId),
+        this.api.getProducers(this.setId),
+        this.api.getBreederProducers(this.setId),
+        this.api.getProducerProducers(this.setId),
+        this.api.getProducerBreeder(this.setId)
+      ]).subscribe(
+        ([schedules, breeders, producers, breederProducers, producerProducers, producerBreeder]) => {
+          const suppliers: Supplier[] = [];
+          if (breeders.success) {
+            breeders.data.forEach((breeder) => {
+              suppliers.push({
+                id: breeder.external_id,
+                name: breeder.name,
+                capacity: breeder.capacity,
+              });
+            })
+          }
+
+          const events: EventData[] = [];
+          if (producers.success && schedules.success) {
+            producers.data.forEach((producer) => {
+              const schedule = schedules.data.find(s => s.producer === producer.external_id)
+              const fromSchedule = schedule?.week_in ? true : false;
+              const weekIn = schedule?.week_in ? schedule?.week_in : producer.week_in;
+              const event: any = {
+                id: `${producer.external_id}_${producer.week_in}`,
+                name: producer.name,
+                date: this.processWeeks(weekIn, fromSchedule),
+                amount: producer.capacity,
+                supplierId: 'unassigned'
+              }
+              event.date = this.dateUtils.fixIsoWeek(event.date);
+              const eventFemale = new EventData(event);
+              const eventMale = Object.assign({}, eventFemale);
+              eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18));
+              eventMale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventMale.startWeek), 10));
+              eventMale.productType = 'M';
+              events.push(eventFemale, eventMale);
+            });
+          }
+
+          const distanceDemand: DistanceDemand[] = [];
+          if (producerProducers.success) {
+            producerProducers.data.forEach((producerProducer) => {
+              distanceDemand.push({
+                distance_km: producerProducer.distance_km,
+                distance_minute: producerProducer.distance_min,
+                producer_id_too: producerProducer.producer_to,
+                producer_id_from: producerProducer.producer_from,
+              });
+            })
+          }
+
+          const distanceSuppliers: DistanceSuppliers[] = [];
+          if (breederProducers.success) {
+            breederProducers.data.forEach((breederProducer) => {
+              distanceSuppliers.push({
+                distance_km: breederProducer.distance_km,
+                distance_minute: breederProducer.distance_min,
+                breeder_id: breederProducer.breeder,
+                producer_id: breederProducer.producer,
+              });
+            })
+          }
+
+          const producerBreederEvents: EventData[] = [];
+          if (producerBreeder && producerBreeder.length) {
+            producerBreeder.forEach((producerBreeder: any) => {
+              const producerBreederDate = this.dateUtils.fixIsoWeek(producerBreeder.date);
+              const startWeekString = producerBreederDate ? producerBreederDate : producerBreeder.date;
+              const endWeekDate =
+                this.dateUtils.addWeeks(
+                  this.dateUtils.parseWeekString(startWeekString),
+                  producerBreeder.producer_id ? 10 - 1 : 18 - 1
+                );
+              const endWeekString = this.dateUtils.getWeekString(endWeekDate);
+
+              const event: any = {
+                id: `${producerBreeder.producer_id ? `${producerBreeder.producer_id}_${producerBreeder.date}` : producerBreeder.id}`,
+                name: `${producerBreeder.producer_id ? producerBreeder.producer_id : producerBreeder.id}`,
+                date: producerBreederDate,
+                amount: producerBreeder.amount,
+                productType: producerBreeder.producer_id ? 'F' : 'M',
+                supplierId: producerBreeder.breeder_id ? `${producerBreeder.breeder_id}` : 'unassigned',
+                startWeek: startWeekString,
+                endWeek: endWeekString
+              }
+              const eventData = new EventData(event);
+              eventData.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventData.startWeek), 18));
+
+              producerBreederEvents.push(eventData);
+            });
+          }
+          // this.onCloseDialog({ suppliers, events, distanceSuppliers, distanceDemand, producerBreederEvents })
+
+          if (producerBreeder) {
+            const evs = this.processLoadedEvents(events, producerBreederEvents);
+            this.events.set(evs);
+          } else {
+            this.events.set(events);
+          }
+
+          this.processWeeks(this.events()[0].date, true);
+
+          this.dataService.events$.next(this.events());
+          this.dataService.suppliers$.next(suppliers);
+          this.dataService.distance$.next({ demand: distanceDemand, suppliers: distanceSuppliers });
+
+          this.loading = false;
+        }, error => {
+          this.loading = false;
+          console.log(`Load data error`, error);
+          // this._snackBar.open(error, undefined, { duration: 3000 });
+        });
+    }
+  }
+
+  processWeeks(dateString: string, fromSchedule: boolean) {
+    if (!fromSchedule)
+      return dateString;
+
+    return this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), -18))
+  }
+
   private updateEventsWithMaleGroups(eventData?: EventData, newStartWeek?: string) {
     const events = this.events() as EventData[];
     const currentEvents = events;
@@ -140,6 +275,8 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
     if (!eventData) {
       const newGroupedEvents = this.generateEventsWithMaleGroups(events.filter(ev => ev.productType === 'F' && ev.supplierId === 'unassigned'));
+      console.log(`newGroupedEvents`, newGroupedEvents);
+      console.log(`male`, currentEvents.filter(ev => ev.productType === 'M' && ev.supplierId !== 'unassigned'));
       const loadedMaleEvents = currentEvents.filter(ev => ev.productType === 'M' && ev.supplierId !== 'unassigned').map(e => {
         const endWeekDate =
           this.dateUtils.addWeeks(
@@ -150,6 +287,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
         e.endWeek = endWeekString;
         return e;
       })
+      console.log(`loadedMaleEvents`, loadedMaleEvents);
       const newEvents = [...sourceEvents, ...newGroupedEvents, ...loadedMaleEvents]
       const balansed = this.balanceByDate(newEvents)
       this.events.set(balansed);
@@ -180,6 +318,14 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     ];
 
     this.events.set(newEvents);
+  }
+
+  processLoadedEvents(events: EventData[], producerBreederEvents: EventData[]) {
+    const map = new Map<string, EventData>();
+    events.forEach(event => map.set(`${event.name}${event.productType}`, event));
+    producerBreederEvents.forEach(event => map.set(`${event.name}${event.productType}`, event));
+
+    return Array.from(map.values());
   }
 
   balanceByDate(events: EventData[]): EventData[] {
@@ -1105,5 +1251,21 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       .subscribe(() => {
         this.scrollContainer.nativeElement.scrollTop = this.supplierContainer.nativeElement.scrollTop;
       });
+  }
+
+  getDateFromISOWeekStr(weekStr: string): Date {
+    const [year, week] = weekStr.split('-W').map(Number);
+    return this.getDateFromISOWeek(week, year);
+  }
+
+  getDateFromISOWeek(week: number, year: number): Date {
+    const date = setWeek(setYear(new Date(), year), week);
+    return startOfWeek(date, { weekStartsOn: 1 }); // Monday
+  }
+
+  getISOWeekString(date: Date): string {
+    const week = getISOWeek(date);
+    const year = date.getFullYear();
+    return `${year}-W${week.toString()}`;
   }
 }
