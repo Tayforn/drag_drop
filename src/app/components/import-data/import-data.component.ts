@@ -133,7 +133,6 @@ export class ImportDataComponent {
       if (result) {
         if (result.producerBreederEvents) {
           const evs = this.processLoadedEvents(result.events, result.producerBreederEvents);
-          console.log(`evs`, evs.filter(e => e.productType === 'M'));
           this.events.set(evs);
         } else {
           this.events.set(result.events);
@@ -148,31 +147,31 @@ export class ImportDataComponent {
     });
   }
 
-  // processLoadedEvents(events: EventData[], producerBreederEvents: EventData[]) {
-  //   const map = new Map<string, EventData>();
-  //   events.forEach(event => map.set(`${event.name}${event.productType}`, event));
-  //   producerBreederEvents.forEach(event => map.set(`${event.name}${event.productType}`, event));
-
-  //   return Array.from(map.values());
-  // }
-
-  processLoadedEvents(
-    events: EventData[],
-    producerBreederEvents: EventData[],
-  ): EventData[] {
+  processLoadedEvents(events: EventData[], producerBreederEvents: EventData[]) {
     const map = new Map<string, EventData>();
-    events.forEach(event => map.set(event.name, event));
-
-    producerBreederEvents.forEach(event => {
-      const old = map.get(event.name);
-      map.set(event.name, {
-        ...event,
-        date: old?.date ?? event.date,
-      });
-    });
+    events.forEach(event => map.set(`${event.name}${event.productType}`, event));
+    producerBreederEvents.forEach(event => map.set(`${event.name}${event.productType}`, event));
 
     return Array.from(map.values());
   }
+
+  // processLoadedEvents(
+  //   events: EventData[],
+  //   producerBreederEvents: EventData[],
+  // ): EventData[] {
+  //   const map = new Map<string, EventData>();
+  //   events.forEach(event => map.set(event.name, event));
+
+  //   producerBreederEvents.forEach(event => {
+  //     const old = map.get(event.name);
+  //     map.set(event.name, {
+  //       ...event,
+  //       date: old?.date ?? event.date,
+  //     });
+  //   });
+
+  //   return Array.from(map.values());
+  // }
 
   exportData() {
     const events = this.dataService.events$.getValue();

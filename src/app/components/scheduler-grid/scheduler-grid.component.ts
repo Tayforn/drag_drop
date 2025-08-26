@@ -26,6 +26,7 @@ import { addWeeks, getISOWeek, setWeek, setYear, startOfWeek, subWeeks } from 'd
 import { DistanceDemand, DistanceSuppliers } from '../../models/distance.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpService } from '../../services/http.service';
+import { ActivatedRoute } from '@angular/router';
 
 // Interface for event bounding boxes (useful for overlap calculations)
 interface EventRect {
@@ -88,11 +89,18 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
   productionPenalties: WritableSignal<{ over: number, under: number }> = signal({ over: 0, under: 0 });
   allCalcSum: WritableSignal<{ km: number, min: number }> = signal({ km: 0, min: 0 });
 
+  setId?: number;
+
   private _snackBar = inject(MatSnackBar);
 
-  constructor(private dateUtils: DateUtilsService, private cdr: ChangeDetectorRef, private dataService: DataService) { }
+  constructor(private dateUtils: DateUtilsService, private cdr: ChangeDetectorRef, private dataService: DataService, private route: ActivatedRoute) { }
 
   ngOnInit(): void {
+    this.route.paramMap.subscribe(params => {
+      this.setId = +params.get('id')!;
+      console.log(this.setId);
+    });
+
     combineLatest([
       this.dataService.suppliers$,
       this.dataService.events$
@@ -142,11 +150,9 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
         e.endWeek = endWeekString;
         return e;
       })
-      console.log(`loadedMaleEvents`, loadedMaleEvents);
       const newEvents = [...sourceEvents, ...newGroupedEvents, ...loadedMaleEvents]
       const balansed = this.balanceByDate(newEvents)
       this.events.set(balansed);
-      console.log(this.events());
       return;
     }
 
@@ -689,7 +695,8 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     }
 
     if (newSupplierId !== 'unassigned' && !notAllowed) {
-      const eventsInLane = this.events().filter(e => (e.supplierId === newSupplierId)).filter(e => !((e.id === eventData.id) && (e.productType === eventData.productType)));
+      // const eventsInLane = this.events().filter(e => (e.supplierId === newSupplierId)).filter(e => !((e.id === eventData.id) && (e.productType === eventData.productType)));
+      const eventsInLane: EventData[] = [];
       notAllowed = this.hasWeekOverlap(eventsInLane, newStartWeekString, newEndWeekString)
     }
 
