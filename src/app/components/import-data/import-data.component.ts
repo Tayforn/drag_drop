@@ -132,15 +132,8 @@ export class ImportDataComponent {
     dialogRef.afterClosed().subscribe((result: { events: EventData[], suppliers: Supplier[], distanceSuppliers: DistanceSuppliers[], distanceDemand: DistanceDemand[], producerBreederEvents: EventData[] } | null) => {
       if (result) {
         if (result.producerBreederEvents) {
-          console.log(`result.events`, result.events);
-          console.log(`1661 events`, result.events.find(e => e.name === '1661'));
-
-          console.log(`result.producerBreederEvents`, result.producerBreederEvents);
-          console.log(`1661 pB`, result.producerBreederEvents.find(e => e.name === '1661'));
-          const evs = this.processLoadedEvents(result.events, result.producerBreederEvents);
-          console.log(`evs`, evs);
-          console.log(`1661 evs`, evs.find(e => e.name === '1661'));
-          this.events.set(evs);
+          // const evs = this.processLoadedEvents(result.events, result.producerBreederEvents);
+          this.events.set(result.events.concat(result.producerBreederEvents));
         } else {
           this.events.set(result.events);
         }

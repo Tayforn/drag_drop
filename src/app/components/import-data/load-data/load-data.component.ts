@@ -85,12 +85,8 @@ export class LoadDataComponent {
               }
               event.date = this.dateUtils.fixIsoWeek(event.date);
               const eventFemale = new EventData(event);
-              const eventMale = Object.assign({}, eventFemale);
               eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18));
-              eventMale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventMale.startWeek), 10));
-              eventMale.productType = 'M';
-              console.log(`eventMale`, eventMale);
-              events.push(eventFemale, eventMale);
+              events.push(eventFemale);
             });
           }
 
@@ -123,6 +119,10 @@ export class LoadDataComponent {
             producerBreeder.forEach((producerBreeder: any) => {
               const producerBreederDate = this.dateUtils.fixIsoWeek(producerBreeder.date);
               const startWeekString = producerBreederDate ? producerBreederDate : producerBreeder.date;
+
+              const idx = events.findIndex(e => e.name === producerBreeder.producer_id);
+              const schedule = idx !== -1 ? events.splice(idx, 1)[0] : undefined;
+
               const endWeekDate =
                 this.dateUtils.addWeeks(
                   this.dateUtils.parseWeekString(startWeekString),
@@ -133,10 +133,10 @@ export class LoadDataComponent {
               const event: any = {
                 id: `${producerBreeder.producer_id ? `${producerBreeder.producer_id}_${producerBreeder.date}` : producerBreeder.id}`,
                 name: `${producerBreeder.producer_id ? producerBreeder.producer_id : producerBreeder.id}`,
-                date: producerBreederDate,
-                amount: producerBreeder.amount,
-                productType: producerBreeder.producer_id ? 'F' : 'M',
-                supplierId: producerBreeder.breeder_id ? `${producerBreeder.breeder_id}` : 'unassigned',
+                date: schedule ? schedule.date : producerBreederDate,
+                amount: schedule ? schedule.amount : producerBreeder.amount,
+                productType: schedule ? 'F' : 'M',
+                supplierId: producerBreeder.breeder_id,
                 startWeek: startWeekString,
                 endWeek: endWeekString
               }
@@ -146,7 +146,7 @@ export class LoadDataComponent {
               producerBreederEvents.push(eventData);
             });
           }
-          console.log(`eeee`, events);
+
           this.onCloseDialog({ suppliers, events, distanceSuppliers, distanceDemand, producerBreederEvents })
 
           this.loading = false;
@@ -160,7 +160,6 @@ export class LoadDataComponent {
     if (!fromSchedule)
       return dateString;
     const date = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), -18));
-    console.log(`id: ${id} | before - ${dateString} / after ${date}`);
     return this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), -18))
   }
 

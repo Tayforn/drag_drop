@@ -115,8 +115,6 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
           if ((suppliers.length > 0) && (events.length > 0)) {
             this.generateWeekRange(events);
             this.events.set(events);
-            console.log(`events`, events);
-            console.log(`100075`, events.find(e => e.name === 'ST-100075'));
 
             this.updateEventsWithMaleGroups();
             this.checkForUnassignedEvents();
@@ -274,9 +272,8 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     const groupedEvents = currentEvents.filter(ev => ev.productType === 'M');
 
     if (!eventData) {
-      const newGroupedEvents = this.generateEventsWithMaleGroups(events.filter(ev => ev.productType === 'F' && ev.supplierId === 'unassigned'));
-      console.log(`newGroupedEvents`, newGroupedEvents);
-      console.log(`male`, currentEvents.filter(ev => ev.productType === 'M' && ev.supplierId !== 'unassigned'));
+      const newGroupedEvents = this.generateEventsWithMaleGroups(events.filter(ev => ev.supplierId === 'unassigned'));
+
       const loadedMaleEvents = currentEvents.filter(ev => ev.productType === 'M' && ev.supplierId !== 'unassigned').map(e => {
         const endWeekDate =
           this.dateUtils.addWeeks(
@@ -287,10 +284,10 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
         e.endWeek = endWeekString;
         return e;
       })
-      console.log(`loadedMaleEvents`, loadedMaleEvents);
+
       const newEvents = [...sourceEvents, ...newGroupedEvents, ...loadedMaleEvents]
-      const balansed = this.balanceByDate(newEvents)
-      this.events.set(balansed);
+      // const balansed = this.balanceByDate(newEvents)
+      this.events.set(newEvents);
       return;
     }
 
@@ -987,7 +984,9 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     const supplierIndex = this.suppliers.findIndex(s => s.id === event.supplierId);
     if (supplierIndex === -1) {
       console.warn(`Event ${event.id} has no valid supplierId: ${event.supplierId}. Positioning at top.`);
+      // event.supplierId = 'unassigned';
       event.topPosition = 0;
+      // this.events.set(this.events().filter(e => e.id !== event.id))
       return;
     }
     let totalHeightAbove = 0;
