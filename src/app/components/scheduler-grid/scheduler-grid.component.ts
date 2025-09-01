@@ -175,7 +175,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
               event.date = this.dateUtils.fixIsoWeek(event.date);
               const eventFemale = new EventData(event);
               const eventMale = Object.assign({}, eventFemale);
-              eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18));
+              eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18 - 1));
               eventMale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventMale.startWeek), 10));
               eventMale.productType = 'M';
               events.push(eventFemale, eventMale);
@@ -229,7 +229,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
                 endWeek: endWeekString
               }
               const eventData = new EventData(event);
-              eventData.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventData.startWeek), 18));
+              eventData.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventData.startWeek), 18 - 1));
 
               producerBreederEvents.push(eventData);
             });

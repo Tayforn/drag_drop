@@ -85,7 +85,7 @@ export class LoadDataComponent {
               }
               event.date = this.dateUtils.fixIsoWeek(event.date);
               const eventFemale = new EventData(event);
-              eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18));
+              eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18 - 1));
               events.push(eventFemale);
             });
           }
@@ -141,7 +141,7 @@ export class LoadDataComponent {
                 endWeek: endWeekString
               }
               const eventData = new EventData(event);
-              eventData.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventData.startWeek), 18));
+              eventData.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventData.startWeek), 18 - 1));
 
               producerBreederEvents.push(eventData);
             });
