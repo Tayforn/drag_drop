@@ -99,7 +99,7 @@ export class AddEventComponent {
                     id: `${item.id}`,
                     name: item.id,
                     startWeek: item.date,
-                    endWeek: this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(item.date), (item.product_type === 'F') ? 18 - 1 : 10 - 1)),
+                    endWeek: this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(item.date), (item.product_type === 'F') ? 18 : 10)),
                     date: item.date,
                     amount: +item.amount,
                     supplierId: 'unassigned',

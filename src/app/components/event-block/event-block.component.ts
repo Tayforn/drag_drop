@@ -9,10 +9,10 @@ import {
 import { CommonModule } from '@angular/common'; // Import CommonModule for ngIf, ngFor etc.
 import { EventData } from '../../models/event.model';
 import { DateUtilsService } from '../../services/date-utils.service';
-import {CdkDrag} from '@angular/cdk/drag-drop';
-import {EditEventComponent} from './edit-event/edit-event.component';
-import {MatDialog} from '@angular/material/dialog';
-import {DistanceDemand, DistanceSuppliers} from '../../models/distance.model';
+import { CdkDrag } from '@angular/cdk/drag-drop';
+import { EditEventComponent } from './edit-event/edit-event.component';
+import { MatDialog } from '@angular/material/dialog';
+import { DistanceDemand, DistanceSuppliers } from '../../models/distance.model';
 
 @Component({
   selector: 'app-event-block',
@@ -29,7 +29,7 @@ export class EventBlockComponent implements OnInit {
   pixelsPerAmountUnit = input.required<number>();
   top = input.required<number>();
   left = input.required<number>();
-  distance = input.required<{distance_km: number, distance_minute: number} | null | undefined>();
+  distance = input.required<{ distance_km: number, distance_minute: number } | null | undefined>();
 
   @Output() dragEnded = new EventEmitter<any>();
   @Output() dragStarted = new EventEmitter<any>();
@@ -39,7 +39,9 @@ export class EventBlockComponent implements OnInit {
   eventComponent = viewChild('eventBlock');
 
   blockWidthPx = computed(() => {
-    const weekCount = this.dateUtils.getWeekRangeCount(this.event().startWeek, this.event().endWeek);
+    // const weekCount = this.dateUtils.getWeekRangeCount(this.event().startWeek, this.event().endWeek);
+    const weekCount = this.dateUtils.getWeekRangeCount2(this.event().startWeek, this.event().endWeek);
+
     if (this.event().supplierId === 'unassigned') {
       return this.pixelsPerWeek();
     }
@@ -65,10 +67,10 @@ export class EventBlockComponent implements OnInit {
 
   checkForWeeksShifting() {
     const bV = {
-      1: {color: '', pixel: ''},
-      2: {color: '', pixel: ''},
-      3: {color: '', pixel: ''},
-      4: {color: '', pixel: ''}
+      1: { color: '', pixel: '' },
+      2: { color: '', pixel: '' },
+      3: { color: '', pixel: '' },
+      4: { color: '', pixel: '' }
     };
     const mainColor = (this.event().productType === 'F') ? 'pink' : '#007bff';
     if (this.event().supplierId === 'unassigned') {
@@ -86,14 +88,14 @@ export class EventBlockComponent implements OnInit {
       second = this.event().date;
       shifting = 'left';
     }
-    
+
     const durationWeeks = this.dateUtils.getWeekRangeCount(first, second) - 1;
     if (shifting === 'left') {
       bV['1'].color = (this.event().productType === 'F') ? mainShiftColor : mainColor;
       bV['1'].pixel = '0px';
       bV['2'].color = (this.event().productType === 'F') ? mainShiftColor : mainColor;
       bV['2'].pixel = '0px';
-      bV['3'].color =  mainColor;
+      bV['3'].color = mainColor;
       bV['3'].pixel = '0px';
       bV['4'].color = mainColor;
       bV['4'].pixel = mainWidth;

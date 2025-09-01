@@ -126,7 +126,7 @@ export class LoadDataComponent {
               const endWeekDate =
                 this.dateUtils.addWeeks(
                   this.dateUtils.parseWeekString(startWeekString),
-                  producerBreeder.producer_id ? 10 - 1 : 18 - 1
+                  producerBreeder.producer_id ? 18 - 1 : 10 - 1
                 );
               const endWeekString = this.dateUtils.getWeekString(endWeekDate);
 
@@ -141,7 +141,7 @@ export class LoadDataComponent {
                 endWeek: endWeekString
               }
               const eventData = new EventData(event);
-              eventData.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventData.startWeek), 18 - 1));
+              // eventData.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventData.startWeek), 17));
 
               producerBreederEvents.push(eventData);
             });
@@ -159,8 +159,8 @@ export class LoadDataComponent {
   processWeeks(dateString: string, fromSchedule: boolean, id: string) {
     if (!fromSchedule)
       return dateString;
-    const date = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), -18));
-    return this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), -18))
+    const date = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), -17));
+    return this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), -17))
   }
 
   groupByProducer(data: ScheduleResponse[]): Record<string, ScheduleResponse[]> {

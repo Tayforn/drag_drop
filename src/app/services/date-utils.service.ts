@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { getISOWeek, getWeekYear, startOfWeek, endOfWeek, addWeeks, parseISO, format, setISOWeek } from 'date-fns';
+import { getISOWeek, getWeekYear, startOfWeek, endOfWeek, addWeeks, parseISO, format, setISOWeek, getISOWeeksInYear } from 'date-fns';
 import { Week } from '../models/week.model';
 
 @Injectable({
@@ -24,6 +24,31 @@ export class DateUtilsService {
     return setISOWeek(jan4th, weekNumber);
   }
 
+  getWeekRangeCount2(startWeekString: string, endWeekString: string): number {
+    let [sy, sw] = startWeekString.split('-W').map(Number);
+    let [ey, ew] = endWeekString.split('-W').map(Number);
+
+    if (sy > ey || (sy === ey && sw > ew)) {
+      [sy, ey] = [ey, sy];
+      [sw, ew] = [ew, sw];
+    }
+
+    const maxWeeks = (y: number) => getISOWeeksInYear(new Date(y, 0, 4));
+
+    ew = Math.min(ew, maxWeeks(ey));
+    sw = Math.max(1, sw);
+
+    if (sy === ey) return ew - sw + 1;
+
+    let count = maxWeeks(sy) - sw + 1;
+    for (let y = sy + 1; y < ey; y++) {
+      count += maxWeeks(y);
+    }
+    count += ew;
+
+    return count;
+  }
+
   getWeekRangeCount(startWeekString: string, endWeekString: string): number {
     const startDate = this.parseWeekString(startWeekString);
     const endDate = this.parseWeekString(endWeekString);
@@ -39,33 +64,34 @@ export class DateUtilsService {
 
   generateWeekRange(startWeek: string, endWeek: string): Week[] {
     const weeks: Week[] = [];
-    /*let currentDate = this.parseWeekString(startWeek);
-    const endDate = this.parseWeekString(endWeek);
+    if (!startWeek || !endWeek) return weeks;
 
-    debugger
+    let [startY, startW] = startWeek.split('-W').map(Number);
+    let [endY, endW] = endWeek.split('-W').map(Number);
 
-    while (currentDate <= endDate) {
-      weeks.push({
-        year: getWeekYear(currentDate),
-        weekNumber: getISOWeek(currentDate),
-        label: `W${String(getISOWeek(currentDate))}`
-      });
-      currentDate = addWeeks(currentDate, 1);
-    }*/
-    let [currentYear, currentWeek] = startWeek.split('-W').map(Number);
-    const [endYear, endWeekNumber] = endWeek.split('-W').map(Number);
+    if (startY > endY || (startY === endY && startW > endW)) {
+      [startY, endY] = [endY, startY];
+      [startW, endW] = [endW, startW];
+    }
 
-    while (currentYear <= endYear) {
-      for (let i = currentWeek; i <= ((currentYear < endYear) ? 52 : endWeekNumber); i++) {
+    let y = startY;
+    let w = startW;
+
+    while (y < endY || (y === endY && w <= endW)) {
+      const maxWeeks = getISOWeeksInYear(new Date(y, 0, 4));
+      const lastWeekThisYear = (y < endY) ? maxWeeks : Math.min(endW, maxWeeks);
+
+      for (let i = w; i <= lastWeekThisYear; i++) {
         weeks.push({
-          year: currentYear,
+          year: y,
           weekNumber: i,
           label: `W${i}`,
           overflow: false,
         });
       }
-      currentYear = currentYear + 1;
-      currentWeek = 1;
+
+      y += 1;
+      w = 1;
     }
 
     return weeks;
