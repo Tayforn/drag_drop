@@ -128,7 +128,9 @@ export class LoadDataComponent {
                   this.dateUtils.parseWeekString(startWeekString),
                   producerBreeder.producer_id ? 18 - 1 : 10 - 1
                 );
+
               const endWeekString = this.dateUtils.getWeekString(endWeekDate);
+
 
               const event: any = {
                 id: `${producerBreeder.producer_id ? `${producerBreeder.producer_id}_${producerBreeder.date}` : producerBreeder.id}`,
@@ -140,13 +142,13 @@ export class LoadDataComponent {
                 startWeek: startWeekString,
                 endWeek: endWeekString
               }
+
               const eventData = new EventData(event);
-              // eventData.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventData.startWeek), 17));
+              eventData.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventData.startWeek), 17));
 
               producerBreederEvents.push(eventData);
             });
           }
-
           this.onCloseDialog({ suppliers, events, distanceSuppliers, distanceDemand, producerBreederEvents })
 
           this.loading = false;

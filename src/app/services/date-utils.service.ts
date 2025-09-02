@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { getISOWeek, getWeekYear, startOfWeek, endOfWeek, addWeeks, parseISO, format, setISOWeek, getISOWeeksInYear } from 'date-fns';
+import { getISOWeek, getWeekYear, startOfWeek, endOfWeek, addWeeks, parseISO, format, setISOWeek, getISOWeeksInYear, getISOWeekYear } from 'date-fns';
 import { Week } from '../models/week.model';
 
 @Injectable({
@@ -10,7 +10,7 @@ export class DateUtilsService {
   constructor() { }
 
   getWeekString(date: Date): string {
-    const year = getWeekYear(date);
+    const year = getISOWeekYear(date);
     const week = getISOWeek(date);
     return `${year}-W${String(week)}`;
   }

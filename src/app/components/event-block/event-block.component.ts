@@ -39,8 +39,8 @@ export class EventBlockComponent implements OnInit {
   eventComponent = viewChild('eventBlock');
 
   blockWidthPx = computed(() => {
-    // const weekCount = this.dateUtils.getWeekRangeCount(this.event().startWeek, this.event().endWeek);
-    const weekCount = this.dateUtils.getWeekRangeCount2(this.event().startWeek, this.event().endWeek);
+    const weekCount = this.dateUtils.getWeekRangeCount(this.event().startWeek, this.event().endWeek);
+    // const weekCount = this.dateUtils.getWeekRangeCount2(this.event().startWeek, this.event().endWeek);
 
     if (this.event().supplierId === 'unassigned') {
       return this.pixelsPerWeek();

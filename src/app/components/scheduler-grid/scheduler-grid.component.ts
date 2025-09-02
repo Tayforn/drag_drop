@@ -115,7 +115,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
           if ((suppliers.length > 0) && (events.length > 0)) {
             this.generateWeekRange(events);
             this.events.set(events);
-            
+
             this.updateEventsWithMaleGroups();
             this.checkForUnassignedEvents();
             this.calculateAllEventPositions();
