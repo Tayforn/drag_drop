@@ -74,8 +74,15 @@ export class LoadDataComponent {
           if (producers.success && schedules.success) {
             producers.data.forEach((producer) => {
               const schedule = schedules.data.find(s => s.producer === producer.external_id)
+              if(schedule?.producer === 'ST-100026') {
+                console.log(`schedule`, schedule);
+                console.log(`prod`, producer);
+              }
               const fromSchedule = schedule?.week_in ? true : false;
               const weekIn = schedule?.week_in ? schedule?.week_in : producer.week_in;
+              if(schedule?.producer === 'ST-100026') {
+                console.log(`weekIn`, weekIn);
+              }
               const event: any = {
                 id: `${producer.external_id}_${producer.week_in}`,
                 name: producer.name,
@@ -84,6 +91,10 @@ export class LoadDataComponent {
                 supplierId: 'unassigned'
               }
               event.date = this.dateUtils.fixIsoWeek(event.date);
+              if(producer.name === 'ST-100026') {
+                console.log(`date1`, this.processWeeks(weekIn, fromSchedule, producer.external_id));
+                console.log(`date2`, event.date);
+              }
               const eventFemale = new EventData(event);
               eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18 - 1));
               events.push(eventFemale);
@@ -161,7 +172,7 @@ export class LoadDataComponent {
   processWeeks(dateString: string, fromSchedule: boolean, id: string) {
     if (!fromSchedule)
       return dateString;
-    const weeksToSubstr = this.inputId === 820 ? -18 : -17;
+    const weeksToSubstr = -18;
 
     return this.getISOWeekString(this.addWeeks(this.getDateFromISOWeekStr(dateString), weeksToSubstr))
   }
