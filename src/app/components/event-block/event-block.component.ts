@@ -79,7 +79,7 @@ export class EventBlockComponent implements OnInit {
     }
 
     const mainShiftColor = (this.event().productType === 'F') ? '#A40006' : '#FF453A';
-    const mainWidth = (this.event().productType === 'F') ? '570px' : '330px';
+    const mainWidth = (this.event().productType === 'F') ? '540px' : '300px';
     let first = this.event().date;
     let second = this.event().startWeek;
     let shifting: 'left' | 'right' = 'right';
@@ -114,12 +114,11 @@ export class EventBlockComponent implements OnInit {
       bV['4'].pixel = mainWidth;
       if (durationWeeks > this.event().maxShiftWeeksLate) {
         const diff = durationWeeks - this.event().maxShiftWeeksLate;
-        const value1 = (this.event().productType === 'F') ? 570 : 330;
+        const value1 = (this.event().productType === 'F') ? 540 : 300;
         const value2 = value1 - (diff * 30);
         bV['2'].pixel = bV['3'].pixel = `${value2 > 0 ? value2 : 0}px`;
       }
     }
-
     this.background = `linear-gradient(to right, ${bV['1'].color} ${bV['1'].pixel}, ${bV['2'].color} ${bV['2'].pixel}, ${bV['3'].color} ${bV['3'].pixel}, ${bV['4'].color} ${bV['4'].pixel})`
   }
 

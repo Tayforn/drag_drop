@@ -175,6 +175,7 @@ export class LoadDataComponent {
       return acc;
     }, {} as Record<string, ScheduleResponse[]>);
   }
+  
   getDateFromISOWeekStr(weekStr: string): Date {
     const [year, week] = weekStr.split('-W').map(Number);
     return this.getDateFromISOWeek(week, year);
