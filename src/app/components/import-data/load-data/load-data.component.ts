@@ -161,8 +161,9 @@ export class LoadDataComponent {
   processWeeks(dateString: string, fromSchedule: boolean, id: string) {
     if (!fromSchedule)
       return dateString;
-    const date = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), -17));
-    return this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), -17))
+    const weeksToSubstr = this.inputId === 820 ? -18 : -17; 
+    const date = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), weeksToSubstr));
+    return this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), weeksToSubstr))
   }
 
   groupByProducer(data: ScheduleResponse[]): Record<string, ScheduleResponse[]> {
