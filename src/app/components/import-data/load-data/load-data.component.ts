@@ -74,15 +74,10 @@ export class LoadDataComponent {
           if (producers.success && schedules.success) {
             producers.data.forEach((producer) => {
               const schedule = schedules.data.find(s => s.producer === producer.external_id)
-              if(schedule?.producer === 'ST-100026') {
-                console.log(`schedule`, schedule);
-                console.log(`prod`, producer);
-              }
+
               const fromSchedule = schedule?.week_in ? true : false;
               const weekIn = schedule?.week_in ? schedule?.week_in : producer.week_in;
-              if(schedule?.producer === 'ST-100026') {
-                console.log(`weekIn`, weekIn);
-              }
+
               const event: any = {
                 id: `${producer.external_id}_${producer.week_in}`,
                 name: producer.name,
@@ -91,11 +86,9 @@ export class LoadDataComponent {
                 supplierId: 'unassigned'
               }
               event.date = this.dateUtils.fixIsoWeek(event.date);
-              if(producer.name === 'ST-100026') {
-                console.log(`date1`, this.processWeeks(weekIn, fromSchedule, producer.external_id));
-                console.log(`date2`, event.date);
-              }
+
               const eventFemale = new EventData(event);
+
               eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18 - 1));
               events.push(eventFemale);
             });
@@ -131,17 +124,29 @@ export class LoadDataComponent {
               const producerBreederDate = this.dateUtils.fixIsoWeek(producerBreeder.date);
               const startWeekString = producerBreederDate ? producerBreederDate : producerBreeder.date;
 
+
               const idx = events.findIndex(e => e.name === producerBreeder.producer_id);
               const schedule = idx !== -1 ? events.splice(idx, 1)[0] : undefined;
-
+              if (schedule?.name === 'ST-100026') {
+                console.log(`startWeekString`, startWeekString);
+              }
+              if (schedule?.name === 'ST-100026') {
+                console.log(`schedule`, schedule);
+              }
               const endWeekDate =
                 this.dateUtils.addWeeks(
                   this.dateUtils.parseWeekString(startWeekString),
                   producerBreeder.producer_id ? 18 - 1 : 10 - 1
                 );
 
+              if (schedule?.name === 'ST-100026') {
+                console.log(`endWeekDate`, endWeekDate);
+              }
               const endWeekString = this.dateUtils.getWeekString(endWeekDate);
 
+              if (schedule?.name === 'ST-100026') {
+                console.log(`endWeekString`, endWeekString);
+              }
 
               const event: any = {
                 id: `${producerBreeder.producer_id ? `${producerBreeder.producer_id}_${producerBreeder.date}` : producerBreeder.id}`,
@@ -152,6 +157,10 @@ export class LoadDataComponent {
                 supplierId: producerBreeder.breeder_id,
                 startWeek: startWeekString,
                 endWeek: endWeekString
+              }
+
+              if (schedule?.name === 'ST-100026') {
+                console.log(`event`, event);
               }
 
               const eventData = new EventData(event);
