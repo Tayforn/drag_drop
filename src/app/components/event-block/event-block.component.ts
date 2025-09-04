@@ -45,6 +45,10 @@ export class EventBlockComponent implements OnInit {
     if (this.event().supplierId === 'unassigned') {
       return this.pixelsPerWeek();
     }
+    if(this.event().name === 'ST-100683'){
+      console.log(`e`, this.event());
+      console.log(`weekCount`, weekCount);
+    }
     return weekCount * this.pixelsPerWeek();
   });
   blockHeightPx = computed(() => {
@@ -88,6 +92,7 @@ export class EventBlockComponent implements OnInit {
       second = this.event().date;
       shifting = 'left';
     }
+
 
     const durationWeeks = this.dateUtils.getWeekRangeCount(first, second) - 1;
     if (shifting === 'left') {

@@ -10,7 +10,7 @@ import { Supplier } from '../../../models/supplier.model';
 import { EventData } from '../../../models/event.model';
 import { DistanceDemand, DistanceSuppliers } from '../../../models/distance.model';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { addWeeks, getISOWeek, setWeek, setYear, startOfWeek } from 'date-fns';
+import { addWeeks, getISOWeek, getISOWeekYear, setWeek, setYear, startOfWeek } from 'date-fns';
 import { DateUtilsService } from '../../../services/date-utils.service';
 
 
@@ -161,9 +161,23 @@ export class LoadDataComponent {
   processWeeks(dateString: string, fromSchedule: boolean, id: string) {
     if (!fromSchedule)
       return dateString;
-    const weeksToSubstr = this.inputId === 820 ? -18 : -17; 
-    const date = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), weeksToSubstr));
-    return this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(dateString), weeksToSubstr))
+    const weeksToSubstr = this.inputId === 820 ? -18 : -17;
+
+    return this.getISOWeekString(this.addWeeks(this.getDateFromISOWeekStr(dateString), weeksToSubstr))
+  }
+
+  addWeeksUTC(dateUTC: Date, weeks: number) {
+    const d = new Date(dateUTC);
+    d.setUTCDate(d.getUTCDate() + weeks * 7);
+    return d;
+  }
+
+  addWeeks(date: Date, weeks: number): Date {
+    const d = new Date(date);
+    d.setHours(12, 0, 0, 0);                              // спершу ставимо полудень (анти-DST трюк)
+    d.setDate(d.getDate() + weeks * 7);                   // локальна календарна арифметика
+    d.setHours(0, 0, 0, 0);                               // повертаємо на локальну північ
+    return d;
   }
 
   groupByProducer(data: ScheduleResponse[]): Record<string, ScheduleResponse[]> {
@@ -175,10 +189,22 @@ export class LoadDataComponent {
       return acc;
     }, {} as Record<string, ScheduleResponse[]>);
   }
-  
+
   getDateFromISOWeekStr(weekStr: string): Date {
-    const [year, week] = weekStr.split('-W').map(Number);
-    return this.getDateFromISOWeek(week, year);
+    const [yearStr, weekStrNum] = weekStr.split('-W');
+    const year = Number(yearStr);
+    const week = Number(weekStrNum);
+
+    // Беремо 4 січня (локально) і шукаємо понеділок першого ISO-тижня
+    const jan4 = new Date(year, 0, 4, 12, 0, 0, 0);      // полудень, щоб уникати DST-стрибків
+    const dow = jan4.getDay() || 7;                      // неділя → 7
+    const week1Mon = new Date(jan4);
+    week1Mon.setDate(jan4.getDate() - (dow - 1));
+
+    const d = new Date(week1Mon);
+    d.setDate(week1Mon.getDate() + (week - 1) * 7);      // додаємо (week-1)*7 днів локально
+    d.setHours(0, 0, 0, 0);                               // локальна північ
+    return d;
   }
 
   getDateFromISOWeek(week: number, year: number): Date {
@@ -188,7 +214,7 @@ export class LoadDataComponent {
 
   getISOWeekString(date: Date): string {
     const week = getISOWeek(date);
-    const year = date.getFullYear();
-    return `${year}-W${week.toString()}`;
+    const year = getISOWeekYear(date);                    // важливо! а не date.getFullYear()
+    return `${year}-W${String(week).padStart(2, '0')}`;
   }
 }

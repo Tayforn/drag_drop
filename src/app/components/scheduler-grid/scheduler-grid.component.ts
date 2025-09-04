@@ -789,7 +789,8 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       newStartWeekString = eventData.startWeek;
     }
 
-    const durationWeeks = this.dateUtils.getWeekRangeCount(eventData.startWeek, eventData.endWeek);
+    const durationWeeks = this.dateUtils.getWeekRangeCount2(eventData.startWeek, eventData.endWeek);
+
     let newEndWeekString: string; // Changed to string
     if (newStartWeekString) {
       const newEndWeekDate = this.dateUtils.addWeeks(this.dateUtils.parseWeekString(newStartWeekString), durationWeeks - 1);
@@ -911,7 +912,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     this.calculateAllEventPositions(); // Re-calculate base positions for all events
 
     console.log(`Event ${eventData.name} final update to: ${newStartWeekString} - ${newEndWeekString}, Supplier: ${newSupplierId}`);
-
+    console.log(`event`, eventData);
     // IMPORTANT: Clear the transform applied by cdkDrag
     // This needs to be done *after* Angular has applied the new top/left positions
     setTimeout(() => {
