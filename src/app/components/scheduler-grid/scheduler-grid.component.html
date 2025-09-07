@@ -59,6 +59,7 @@
           @for (week of weeks; track week) {
             <div
               class="week-header"
+              [ngClass]="draggedWeek() === week.label ? 'recommended-week' : null"
               [class.overflow-week]="week.overflow"
               [style.width.px]="WEEK_COLUMN_WIDTH_PX"
             >

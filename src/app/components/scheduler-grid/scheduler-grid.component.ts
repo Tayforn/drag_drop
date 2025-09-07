@@ -91,6 +91,8 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
   productionPenalties: WritableSignal<{ over: number, under: number }> = signal({ over: 0, under: 0 });
   allCalcSum: WritableSignal<{ km: number, min: number }> = signal({ km: 0, min: 0 });
 
+  draggedWeek: WritableSignal<null | string> = signal(null);
+
   setId?: number;
   loading = false;
 
@@ -115,7 +117,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
           if ((suppliers.length > 0) && (events.length > 0)) {
             this.generateWeekRange(events);
             this.events.set(events);
-            console.log(`events`, this.events());
+
             this.updateEventsWithMaleGroups();
             this.checkForUnassignedEvents();
             this.calculateAllEventPositions();
@@ -698,6 +700,11 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     this.draggingEvent = eventData;
     this.showPlaceholder = true; // Show placeholder when drag starts
 
+    const week = this.draggingEvent.date.split('-')[1];
+    console.log(`week`, week);
+    this.draggedWeek.set(this.draggingEvent.date.split('-')[1]);
+
+
     // Set initial placeholder dimensions (same as the event block)
     this.placeholderWidthPx = this.getEventBlockWidth(eventData);
     this.placeholderHeightPx = this.getEventBlockHeight(eventData);
@@ -763,6 +770,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
   }
 
   onDragEnded(event: CdkDragEnd, eventData: EventData): void {
+    this.draggedWeek.set(null);
     // Hide placeholder and clear dragging event reference
     this.showPlaceholder = false;
     this.draggingEvent = null;
@@ -912,7 +920,6 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     this.calculateAllEventPositions(); // Re-calculate base positions for all events
 
     console.log(`Event ${eventData.name} final update to: ${newStartWeekString} - ${newEndWeekString}, Supplier: ${newSupplierId}`);
-    console.log(`event`, eventData);
     // IMPORTANT: Clear the transform applied by cdkDrag
     // This needs to be done *after* Angular has applied the new top/left positions
     setTimeout(() => {
@@ -1138,13 +1145,15 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       if (shifting === 'left') {
         if (durationWeeks > event.maxShiftWeeksEarly) {
           const diff = durationWeeks - event.maxShiftWeeksEarly;
-          this.shiftPenalties.update((v) => v + (event.amount * diff));
+          if (event.supplierId !== 'unassigned')
+            this.shiftPenalties.update((v) => v + (event.amount * diff));
           this.eventsShiftErrors.push(`Event <span>${event.name} (${event.productType})</span> is shifted early for <span>${diff} weeks</span>`);
         }
       } else {
         if (durationWeeks > event.maxShiftWeeksLate) {
           const diff = durationWeeks - event.maxShiftWeeksLate;
-          this.shiftPenalties.update((v) => v + (event.amount * diff));
+          if (event.supplierId !== 'unassigned')
+            this.shiftPenalties.update((v) => v + (event.amount * diff));
           this.eventsShiftErrors.push(`Event <span>${event.name} (${event.productType})</span> is shifted late for <span>${diff} weeks</span>`);
         }
       }
