@@ -1145,14 +1145,14 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       if (shifting === 'left') {
         if (durationWeeks > event.maxShiftWeeksEarly) {
           const diff = durationWeeks - event.maxShiftWeeksEarly;
-          if (event.supplierId !== 'unassigned')
+          if (event.supplierId !== 'unassigned' && event.productType === 'F')
             this.shiftPenalties.update((v) => v + (event.amount * diff));
           this.eventsShiftErrors.push(`Event <span>${event.name} (${event.productType})</span> is shifted early for <span>${diff} weeks</span>`);
         }
       } else {
         if (durationWeeks > event.maxShiftWeeksLate) {
           const diff = durationWeeks - event.maxShiftWeeksLate;
-          if (event.supplierId !== 'unassigned')
+          if (event.supplierId !== 'unassigned' && event.productType === 'F')
             this.shiftPenalties.update((v) => v + (event.amount * diff));
           this.eventsShiftErrors.push(`Event <span>${event.name} (${event.productType})</span> is shifted late for <span>${diff} weeks</span>`);
         }
