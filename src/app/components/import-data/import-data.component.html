@@ -27,7 +27,7 @@
           ></span>
         </ng-template>
         <div [style.height.px]="115" class="w-100 border-1 border-1 border-round-xl p-1 overflow-y-auto">
-          @for (err of eventsShiftErrors(); track err) {
+          @for (err of eventsShiftErrors(); track $index) {
             <div class="error-message" [innerHTML]="err"></div>
           }
         </div>
@@ -43,7 +43,7 @@
           ></span>
         </ng-template>
         <div [style.height.px]="115" class="w-100 border-1 border-1 border-round-xl p-1 overflow-y-auto">
-          @for (err of supplierOverflowErrors(); track err) {
+          @for (err of supplierOverflowErrors(); track $index) {
             <div class="error-message" [innerHTML]="err"></div>
           }
         </div>

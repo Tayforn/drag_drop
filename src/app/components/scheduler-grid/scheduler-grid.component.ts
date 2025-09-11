@@ -116,10 +116,17 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
           this.suppliers = suppliers;
           if ((suppliers.length > 0) && (events.length > 0)) {
             this.generateWeekRange(events);
-            this.events.set(events);
 
-            this.updateEventsWithMaleGroups();
+            const breederMappingMaleEvents = events.filter(e => e.productType === 'M');
+            const femaleEvents = events.filter(e => e.productType === 'F');
+
+            const newGroupedEvents = this.generateEventsWithMaleGroups(femaleEvents);
+
+            const updatedAfterMale = this.bulkApplyMalePlacements(newGroupedEvents, breederMappingMaleEvents, this.suppliers);
+            this.events.set([...femaleEvents, ...updatedAfterMale]);
+
             this.checkForUnassignedEvents();
+            // this.updateEventsWithMaleGroups();
             this.calculateAllEventPositions();
           }
           this.cdr.detectChanges();
@@ -267,51 +274,54 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
   private updateEventsWithMaleGroups(eventData?: EventData, newStartWeek?: string) {
     const events = this.events() as EventData[];
-    const currentEvents = events;
-    const sourceEvents = currentEvents.filter(ev => ev.productType === 'F');
-    const groupedEvents = currentEvents.filter(ev => ev.productType === 'M');
 
+    // 1) Розділяємо події
+    const sourceEvents = events.filter(ev => ev.productType === 'F'); // лише F
+    const groupedEvents = events.filter(ev => ev.productType === 'M'); // всі M (і assigned, і unassigned)
+
+    // 2) Перегенерація всіх M-груп під час первинного лоаду
     if (!eventData) {
-      const newGroupedEvents = this.generateEventsWithMaleGroups(events.filter(ev => ev.supplierId === 'unassigned'));
+      // генеруємо M-групи ТІЛЬКИ з F-івентів
+      const newGroupedEvents = this.generateEventsWithMaleGroups(sourceEvents);
 
-      const loadedMaleEvents = currentEvents.filter(ev => ev.productType === 'M' && ev.supplierId !== 'unassigned').map(e => {
-        const endWeekDate =
-          this.dateUtils.addWeeks(
-            this.dateUtils.parseWeekString(e.startWeek),
-            9
-          );
-        const endWeekString = this.dateUtils.getWeekString(endWeekDate);
-        e.endWeek = endWeekString;
-        return e;
-      })
+      // зберігаємо вже розміщені (assigned) M-блоки як є
+      const loadedMaleEvents = events
+        .filter(ev => ev.productType === 'M' && ev.supplierId !== 'unassigned')
+        .map(e => {
+          const endWeekDate = this.dateUtils.addWeeks(this.dateUtils.parseWeekString(e.startWeek), 9);
+          return { ...e, endWeek: this.dateUtils.getWeekString(endWeekDate) };
+        });
 
-      const newEvents = [...sourceEvents, ...newGroupedEvents, ...loadedMaleEvents]
-      // const balansed = this.balanceByDate(newEvents)
-      this.events.set(newEvents);
+      this.events.set([...sourceEvents, ...newGroupedEvents, ...loadedMaleEvents]);
       return;
     }
 
+    // 3) Локальна перегенерація для переміщення F-блока
     const affectedStartWeek = eventData.startWeek;
     const affectedNewStartWeek = newStartWeek || eventData.startWeek;
 
+    // Беремо тільки F-блоки, які торкаються цих тижнів
     const relatedSourceEvents = sourceEvents.filter(ev =>
       ev.startWeek === affectedStartWeek || ev.startWeek === affectedNewStartWeek
     );
+    if (relatedSourceEvents.length === 0) return;
 
-    if (relatedSourceEvents.length === 0) {
-      return;
-    }
+    // Створюємо нові unassigned M-групи для цих тижнів
+    const updatedGroupEvents = this.generateEventsWithMaleGroups(relatedSourceEvents);
 
-    const updatedGroupEvent = this.generateEventsWithMaleGroups(relatedSourceEvents)
-
+    // Вилучаємо ЛИШЕ unassigned M для цих тижнів, але залишаємо assigned M (щоб не зникали)
     const filteredGroupedEvents = groupedEvents.filter(
-      g => g.startWeek !== affectedStartWeek && g.startWeek !== affectedNewStartWeek
+      g => g.supplierId !== 'unassigned' || (g.startWeek !== affectedStartWeek && g.startWeek !== affectedNewStartWeek)
     );
 
+    // Складаємо новий масив подій:
+    // - всі F як є
+    // - усі M, крім старих unassigned на цих тижнях
+    // - нові unassigned M-групи для цих тижнів
     const newEvents = [
       ...sourceEvents,
       ...filteredGroupedEvents,
-      ...updatedGroupEvent
+      ...updatedGroupEvents,
     ];
 
     this.events.set(newEvents);
@@ -323,74 +333,6 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     producerBreederEvents.forEach(event => map.set(`${event.name}${event.productType}`, event));
 
     return Array.from(map.values());
-  }
-
-  balanceByDate(events: EventData[]): EventData[] {
-    const grouped: Record<string, EventData[]> = {};
-    for (const e of events) {
-      (grouped[e.date] ??= []).push(e);
-    }
-
-    const result: EventData[] = [...events];
-
-    for (const [date, list] of Object.entries(grouped)) {
-      let sumF = 0;
-      let sumM = 0;
-
-      for (const e of list) {
-        if (e.productType === 'F') sumF += e.amount || 0;
-        else if (e.productType === 'M') sumM += e.amount || 0;
-      }
-
-      const diff = sumF - sumM;
-      if (diff > 0) {
-        const template =
-          list.find(e => e.productType === 'M') ??
-          list.find(e => e.productType === 'F');
-        if (!template) continue;
-
-        const autoId = `${date}_${Math.random().toString(36).slice(2, 8)}`;
-
-        const mCompensation: EventData = {
-          ...template,
-          id: autoId,
-          name: `${template.name}_${Math.random().toString(36).slice(2, 8)}`,
-          productType: 'M',
-          supplierId: 'unassigned',
-          amount: diff,
-        };
-
-        result.push(new EventData(mCompensation));
-      }
-    }
-
-    type UGroup = { keepIndex: number; sum: number };
-    const uGroups: Record<string, UGroup> = {};
-    const toRemove: number[] = [];
-
-    result.forEach((e, idx) => {
-      if (e.productType !== 'M') return;
-      if (e.supplierId !== 'unassigned') return;
-
-      const key = e.startWeek;
-
-      if (!uGroups[key]) {
-        uGroups[key] = { keepIndex: idx, sum: e.amount || 0 };
-      } else {
-        uGroups[key].sum += e.amount || 0;
-        toRemove.push(idx);
-      }
-    });
-
-    for (const g of Object.values(uGroups)) {
-      const keep = result[g.keepIndex];
-      keep.amount = g.sum;
-      keep.supplierId = 'unassigned';
-    }
-
-    toRemove.sort((a, b) => b - a).forEach(i => result.splice(i, 1));
-
-    return result;
   }
 
   generateEventsWithMaleGroups(sourceEvents: EventData[]) {
@@ -695,13 +637,11 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
 
   // --- Drag Event Handlers ---
-
   onDragStarted(event: CdkDragStart, eventData: EventData): void {
     this.draggingEvent = eventData;
     this.showPlaceholder = true; // Show placeholder when drag starts
 
     const week = this.draggingEvent.date.split('-')[1];
-    console.log(`week`, week);
     this.draggedWeek.set(this.draggingEvent.date.split('-')[1]);
 
 
@@ -1127,6 +1067,15 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     this.selfUpdate = false;
   }
 
+  private uniqStrings(arr: string[]): string[] {
+    const seen = new Set<string>();
+    return arr.filter(s => {
+      if (seen.has(s)) return false;
+      seen.add(s);
+      return true;
+    });
+  }
+
   checkForEventsErrorMessages() {
     this.eventsShiftErrors = [];
     this.shiftPenalties.set(0);
@@ -1164,6 +1113,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       }
     });
 
+    this.eventsShiftErrors = this.uniqStrings(this.eventsShiftErrors);
     this.unassignedPenalties.set({ amount, demand });
   }
 
@@ -1274,5 +1224,107 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     const week = getISOWeek(date);
     const year = date.getFullYear();
     return `${year}-W${week.toString()}`;
+  }
+
+  private bulkApplyMalePlacements(
+    newGroupedEvents: EventData[],
+    breederMappingMaleEvents: EventData[],
+    suppliers: { id: string; capacity?: number | null }[]
+  ): EventData[] {
+    // Work on a copy to avoid mutating inputs
+    const updated: EventData[] = newGroupedEvents.map(e => ({ ...e }));
+
+    // Fast index by id
+    const idxById = new Map<string, number>();
+    updated.forEach((e, i) => idxById.set(e.id, i));
+
+    // Supplier map
+    const suppliersById = new Map<string, { id: string; capacity?: number | null }>();
+    suppliers.forEach(s => suppliersById.set(s.id, s));
+
+    // Index of unassigned male events by startWeek
+    const unassignedMByWeek = new Map<string, EventData[]>();
+    for (const e of updated) {
+      if (e.productType === 'M' && e.supplierId === 'unassigned') {
+        const list = unassignedMByWeek.get(e.startWeek) ?? [];
+        list.push(e);
+        unassignedMByWeek.set(e.startWeek, list);
+      }
+    }
+
+    // Aggregate already placed amounts by (date, supplierId) for capacity checks
+    const keyDS = (date: string, supplierId: string) => `${date}#${supplierId}`;
+    const totalsByDateSupplier = new Map<string, number>();
+    for (const e of updated) {
+      if (e.productType === 'M' && e.supplierId !== 'unassigned') {
+        const k = keyDS(e.date, e.supplierId);
+        totalsByDateSupplier.set(k, (totalsByDateSupplier.get(k) ?? 0) + (e.amount ?? 0));
+      }
+    }
+
+    // Process desired placements
+    for (const target of breederMappingMaleEvents) {
+      if (target.productType !== 'M') continue;
+      const pool = unassignedMByWeek.get(target.startWeek);
+      if (!pool || pool.length === 0) continue;
+
+      const event = pool.shift()!;
+      const eventIdx = idxById.get(event.id);
+      if (eventIdx == null) continue;
+
+      const desiredSupplierId = target.supplierId;
+      if (!desiredSupplierId || desiredSupplierId === 'unassigned') {
+        // Nothing to do, it is already unassigned
+        continue;
+      }
+
+      const supplier = suppliersById.get(desiredSupplierId);
+      const cap = supplier?.capacity ?? Number.POSITIVE_INFINITY;
+
+      const k = keyDS(event.date, desiredSupplierId);
+      const currentTotal = totalsByDateSupplier.get(k) ?? 0;
+      const amount = event.amount ?? 0;
+
+      const placeable = Math.min(amount, Math.max(0, cap - currentTotal));
+      if (placeable <= 0) {
+        // Supplier is full; put event back
+        pool.unshift(event);
+        continue;
+      }
+
+      const leftover = amount - placeable;
+
+      // Update moved event
+      const moved = { ...updated[eventIdx] };
+      moved.supplierId = desiredSupplierId;
+      moved.amount = placeable;   // M blocks keep weeks unchanged
+      updated[eventIdx] = moved;
+
+      totalsByDateSupplier.set(k, currentTotal + placeable);
+
+      if (leftover > 0) {
+        // Return leftover to unassigned of the same week; merge if possible
+        const restList = unassignedMByWeek.get(event.startWeek) ?? [];
+        const maybeMerge = restList[0];
+        if (maybeMerge && idxById.has(maybeMerge.id)) {
+          const mIdx = idxById.get(maybeMerge.id)!;
+          const merged = { ...updated[mIdx], amount: (updated[mIdx].amount ?? 0) + leftover };
+          updated[mIdx] = merged;
+        } else {
+          const clone: EventData = {
+            ...event,
+            id: `${event.startWeek}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            supplierId: 'unassigned',
+            amount: leftover,
+          };
+          updated.push(clone);
+          idxById.set(clone.id, updated.length - 1);
+          restList.push(clone);
+          unassignedMByWeek.set(event.startWeek, restList);
+        }
+      }
+    }
+
+    return updated;
   }
 }
