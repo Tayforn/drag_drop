@@ -663,6 +663,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
   resetEvent(eventData: EventData) {
     if (eventData.supplierId === 'unassigned') return;
+    if (eventData.productType === 'M') return;
 
     this.draggedWeek.set(null);
     // Hide placeholder and clear dragging event reference
@@ -681,29 +682,29 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       newEndWeekString = eventData.endWeek; // Should not happen if newStartWeekString is always set
     }
 
-    if (eventData.productType === 'M') {
-      const newUnassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
-      if (!newUnassignedEvents.length) {
-        const newEvent: EventData = {
-          ...eventData,
-          amount: eventData.amount,
-          productType: 'M',
-          startWeek: newStartWeekString,
-          endWeek: newEndWeekString,
-          stackOffsetPx: 0,
-          supplierId: 'unassigned',
-          id: `${eventData.startWeek}-${Date.now()}`
-        }
+    // if (eventData.productType === 'M') {
+    //   const newUnassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
+    //   if (!newUnassignedEvents.length) {
+    //     const newEvent: EventData = {
+    //       ...eventData,
+    //       amount: eventData.amount,
+    //       productType: 'M',
+    //       startWeek: newStartWeekString,
+    //       endWeek: newEndWeekString,
+    //       stackOffsetPx: 0,
+    //       supplierId: 'unassigned',
+    //       id: `${eventData.startWeek}-${Date.now()}`
+    //     }
 
-        const currentEvents = this.events();
-        this.events.set([...currentEvents, newEvent]);
-      } else {
-        newUnassignedEvents[0].amount += eventData.amount;
-      }
-      this.events.set(this.events().filter(e => e.id !== eventData.id));
+    //     const currentEvents = this.events();
+    //     this.events.set([...currentEvents, newEvent]);
+    //   } else {
+    //     newUnassignedEvents[0].amount += eventData.amount;
+    //   }
+    //   this.events.set(this.events().filter(e => e.id !== eventData.id));
 
-      return;
-    }
+    //   return;
+    // }
 
     // --- Determine new supplier based on newLogicalY ---
     let newSupplierId: string = 'unassigned';
