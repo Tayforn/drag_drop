@@ -28,6 +28,7 @@
   </form>
 </mat-dialog-content>
 <mat-dialog-actions>
+  <button mat-button (click)="onCloseDialog(false, true)">Reset</button>
   <button mat-button (click)="onCloseDialog()">Close</button>
   <button mat-button (click)="onCloseDialog(false)">Ok</button>
 </mat-dialog-actions>

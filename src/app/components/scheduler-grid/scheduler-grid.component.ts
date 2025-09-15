@@ -38,6 +38,16 @@ interface EventRect {
   height: number;
 }
 
+type DropPreview = {
+  show: boolean;
+  colLeft: number;
+  rowTop: number;
+  rowHeight: number;
+  ghostLeft: number;
+  ghostWidth: number;
+  valid: boolean;
+};
+
 @Component({
   selector: 'app-scheduler-grid',
   standalone: true,
@@ -92,6 +102,16 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
   allCalcSum: WritableSignal<{ km: number, min: number }> = signal({ km: 0, min: 0 });
 
   draggedWeek: WritableSignal<null | string> = signal(null);
+
+  drop = signal<DropPreview>({
+    show: false,
+    colLeft: 0,
+    rowTop: 0,
+    rowHeight: 0,
+    ghostLeft: 0,
+    ghostWidth: 0,
+    valid: true,
+  });
 
   setId?: number;
   loading = false;
@@ -307,12 +327,12 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     if (relatedSourceEvents.length === 0) return;
 
     // Створюємо нові unassigned M-групи для цих тижнів
-    const updatedGroupEvents = this.generateEventsWithMaleGroups(relatedSourceEvents);
+    // const updatedGroupEvents = this.generateEventsWithMaleGroups(relatedSourceEvents);
 
     // Вилучаємо ЛИШЕ unassigned M для цих тижнів, але залишаємо assigned M (щоб не зникали)
-    const filteredGroupedEvents = groupedEvents.filter(
-      g => g.supplierId !== 'unassigned' || (g.startWeek !== affectedStartWeek && g.startWeek !== affectedNewStartWeek)
-    );
+    // const filteredGroupedEvents = groupedEvents.filter(
+    //   g => g.supplierId !== 'unassigned' || (g.startWeek !== affectedStartWeek && g.startWeek !== affectedNewStartWeek)
+    // );
 
     // Складаємо новий масив подій:
     // - всі F як є
@@ -320,8 +340,9 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     // - нові unassigned M-групи для цих тижнів
     const newEvents = [
       ...sourceEvents,
-      ...filteredGroupedEvents,
-      ...updatedGroupEvents,
+      ...groupedEvents,
+      // ...filteredGroupedEvents,
+      // ...updatedGroupEvents,
     ];
 
     this.events.set(newEvents);
@@ -635,14 +656,144 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     }
   }
 
+  resetPreventDefault(e: MouseEvent, eventData: EventData) {
+    e.preventDefault();
+    this.resetEvent(eventData);
+  }
+
+  resetEvent(eventData: EventData) {
+    if (eventData.supplierId === 'unassigned') return;
+
+    this.draggedWeek.set(null);
+    // Hide placeholder and clear dragging event reference
+    this.showPlaceholder = false;
+    this.draggingEvent = null;
+
+    let newStartWeekString: string = eventData.date;
+
+    const durationWeeks = this.dateUtils.getWeekRangeCount2(eventData.startWeek, eventData.endWeek);
+
+    let newEndWeekString: string; // Changed to string
+    if (newStartWeekString) {
+      const newEndWeekDate = this.dateUtils.addWeeks(this.dateUtils.parseWeekString(newStartWeekString), durationWeeks - 1);
+      newEndWeekString = this.dateUtils.getWeekString(newEndWeekDate);
+    } else {
+      newEndWeekString = eventData.endWeek; // Should not happen if newStartWeekString is always set
+    }
+
+    if (eventData.productType === 'M') {
+      const newUnassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
+      if (!newUnassignedEvents.length) {
+        const newEvent: EventData = {
+          ...eventData,
+          amount: eventData.amount,
+          productType: 'M',
+          startWeek: newStartWeekString,
+          endWeek: newEndWeekString,
+          stackOffsetPx: 0,
+          supplierId: 'unassigned',
+          id: `${eventData.startWeek}-${Date.now()}`
+        }
+
+        const currentEvents = this.events();
+        this.events.set([...currentEvents, newEvent]);
+      } else {
+        newUnassignedEvents[0].amount += eventData.amount;
+      }
+      this.events.set(this.events().filter(e => e.id !== eventData.id));
+
+      return;
+    }
+
+    // --- Determine new supplier based on newLogicalY ---
+    let newSupplierId: string = 'unassigned';
+
+    const unassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === eventData.startWeek && e.supplierId === 'unassigned' && e.id !== eventData.id)
+    const totalunassignedEventsAmount = unassignedEvents.reduce((sum, item) => sum + (item.amount || 0), 0) + eventData.amount;
+
+    let notAllowed = false;
+    let notAllowedMessage = 'Not allowed';
+
+    if (eventData.startWeek !== newStartWeekString) {
+      if (!unassignedEvents.length || totalunassignedEventsAmount < eventData.amount) {
+        notAllowed = true;
+        notAllowedMessage = `Put M-block ${eventData.amount} to unassigned`;
+      } else {
+        const newUnassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
+        if (!newUnassignedEvents.length) {
+          const newEvent: EventData = {
+            ...eventData,
+            amount: eventData.amount,
+            productType: 'M',
+            startWeek: newStartWeekString,
+            endWeek: newEndWeekString,
+            stackOffsetPx: 0,
+            supplierId: 'unassigned',
+            id: `${eventData.startWeek}-${Date.now()}`
+          }
+
+          const currentEvents = this.events();
+          this.events.set([...currentEvents, newEvent]);
+        } else {
+          newUnassignedEvents[0].amount += eventData.amount;
+        }
+        unassignedEvents[0].amount -= eventData.amount;
+      }
+    }
+
+    if (notAllowed) {
+      newSupplierId = eventData.supplierId;
+      newStartWeekString = eventData.startWeek;
+      newEndWeekString = eventData.endWeek;
+      this._snackBar.open(notAllowedMessage, undefined, { duration: 3000 });
+    }
+
+    // --- Update Event Data & Re-render ---
+    // Create a new array reference and update the specific event to trigger OnPush
+    const updatedEvents = this.events().map(e => {
+      if ((e.id === eventData.id) && (e.productType === eventData.productType)) {
+        return {
+          ...e,
+          startWeek: newStartWeekString,
+          endWeek: newEndWeekString,
+          supplierId: newSupplierId,
+          stackOffsetPx: 0 // Reset stack offset for the dragged event for re-calculation
+        };
+      }
+      return e;
+    });
+
+    this.events.set(updatedEvents); // Assign new array to trigger change detection
+
+    // After updating the event's core properties, re-calculate all positions and apply stacking
+    // The previous calls to getEventLeftPosition(e) and getEventTopPosition(e) were insufficient
+    // because they didn't account for the new stacking.
+
+    // if (eventData.productType === 'F' && (newStartWeekString !== eventData.startWeek))
+    // this.updateEventsWithMaleGroups(eventData, newStartWeekString);
+
+    this.calculateAllEventPositions(); // Re-calculate base positions for all events
+
+    console.log(`Event ${eventData.name} final update to: ${newStartWeekString} - ${newEndWeekString}, Supplier: ${newSupplierId}`);
+    // IMPORTANT: Clear the transform applied by cdkDrag
+    // This needs to be done *after* Angular has applied the new top/left positions
+    setTimeout(() => {
+      this.cdr.detectChanges(); // Trigger final change detection
+    }, 0);
+  }
 
   // --- Drag Event Handlers ---
   onDragStarted(event: CdkDragStart, eventData: EventData): void {
+    const p = (event as any).source?._lastPointerEvent;
+
+    if (p) this.drop.set(this.snapToDropCell(p.clientX, p.clientY, eventData));
+
     this.draggingEvent = eventData;
     this.showPlaceholder = true; // Show placeholder when drag starts
 
     const week = this.draggingEvent.date.split('-')[1];
-    this.draggedWeek.set(this.draggingEvent.date.split('-')[1]);
+    if (eventData.productType === 'F')
+      this.draggedWeek.set(this.draggingEvent.date.split('-')[1]);
 
 
     // Set initial placeholder dimensions (same as the event block)
@@ -657,31 +808,44 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     this.cdr.detectChanges(); // Force update to show placeholder immediately
   }
 
+
   onDragMoved(event: CdkDragMove, eventData: EventData): void {
-    if (!this.draggingEvent) return; // Should not happen, but for safety
+    if (!this.draggingEvent) return;
 
-    const draggedDistanceX = event.distance.x;
-    const draggedDistanceY = event.distance.y;
+    // 1) Дельта, яку дає CDK (з моменту старту drag)
+    const dx = event.distance?.x ?? 0;
+    const dy = event.distance?.y ?? 0;
 
-    // Get the element's original *base* logical position (before drag started or stacking)
-    // We use internal calculation methods to get the raw base positions.
+    // 2) Лівий (X) беремо, як і було
     const originalLeftPx = this.calculateEventLeftPositionInternal(eventData);
-    const originalTopPx = this.calculateEventBaseTopPositionInternal(eventData);
 
-    // Calculate the potential new logical X and Y positions
-    const potentialNewLogicalX = originalLeftPx + draggedDistanceX;
-    const potentialNewLogicalY = originalTopPx + draggedDistanceY;
+    // 3) ВЕРТИКАЛЬ (Y): беремо реальний top блоку (включає stackOffset),
+    //    а не базовий top рядка. Це і є різний "зсув" для кожного елемента в unassigned.
+    const baseTopPx = this.calculateEventBaseTopPositionInternal(eventData);
+    const originalTopPx = (eventData.topPosition ?? baseTopPx);
 
-    // --- Calculate potential New Start Week for Placeholder ---
+    // Поточний ЛВ-кут у координатах grid-content
+    const anchorContentX = originalLeftPx + dx;
+    const anchorContentY = originalTopPx + dy;
+
+    // 4) Переводимо в viewport-координати (snapToDropCell очікує clientX/Y)
+    const gridRect = this.gridContainer.nativeElement.getBoundingClientRect();
+    const scrollLeft = this.scrollContainer?.nativeElement.scrollLeft ?? 0;
+    const anchorClientX = anchorContentX - scrollLeft + gridRect.left;
+    const anchorClientY = anchorContentY + gridRect.top;
+
+    // 5) Підсвічуємо клітинку по фактичній позиції блоку
+    this.drop.set(this.snapToDropCell(anchorClientX, anchorClientY, eventData));
+
+    // ==== решта без змін ====
+    const potentialNewLogicalX = anchorContentX;
+    const potentialNewLogicalY = anchorContentY;
+
     const potentialNewStartWeekIndex = Math.round(potentialNewLogicalX / this.WEEK_COLUMN_WIDTH_PX);
     let effectiveStartWeekIndex = potentialNewStartWeekIndex;
-
-    // Clamp the potential index to valid week range for the placeholder
     if (effectiveStartWeekIndex < 0) effectiveStartWeekIndex = 0;
     if (effectiveStartWeekIndex >= this.weeks.length) effectiveStartWeekIndex = this.weeks.length - 1;
 
-
-    // --- Calculate potential New Supplier for Placeholder ---
     let potentialNewSupplierId: string | undefined = undefined;
     let currentSupplierLaneY = 0;
     for (const supplier of this.suppliers) {
@@ -693,10 +857,8 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       currentSupplierLaneY += supplierRowHeight;
     }
 
-    // Now, update placeholder position based on snapped positions
     this.placeholderLeftPx = effectiveStartWeekIndex * this.WEEK_COLUMN_WIDTH_PX;
 
-    // Fallback to the first supplier if the drop position is outside known supplier lanes
     let effectiveSupplierIndex = this.suppliers.findIndex(s => s.id === potentialNewSupplierId);
     if (effectiveSupplierIndex === -1) effectiveSupplierIndex = 0;
 
@@ -706,10 +868,12 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     }
     this.placeholderTopPx = placeholderSupplierTop;
 
-    this.cdr.detectChanges(); // Force change detection to update placeholder position quickly during drag
+    this.cdr.detectChanges();
   }
 
   onDragEnded(event: CdkDragEnd, eventData: EventData): void {
+    this.drop.set({ ...this.drop(), show: false });
+
     this.draggedWeek.set(null);
     // Hide placeholder and clear dragging event reference
     this.showPlaceholder = false;
@@ -784,6 +948,38 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       }
     }
 
+    if (eventData.productType === 'F' && newSupplierId !== 'unassigned') {
+      const unassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === eventData.startWeek && e.supplierId === 'unassigned' && e.id !== eventData.id)
+      const totalunassignedEventsAmount = unassignedEvents.reduce((sum, item) => sum + (item.amount || 0), 0) + eventData.amount;
+
+      if (eventData.startWeek !== newStartWeekString) {
+        if (!unassignedEvents.length || totalunassignedEventsAmount < eventData.amount) {
+          notAllowed = true;
+          notAllowedMessage = `Put M-block ${eventData.amount} to unassigned`;
+        } else {
+          const newUnassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
+          if (!newUnassignedEvents.length) {
+            const newEvent: EventData = {
+              ...eventData,
+              amount: eventData.amount,
+              productType: 'M',
+              startWeek: newStartWeekString,
+              endWeek: newEndWeekString,
+              stackOffsetPx: 0,
+              supplierId: 'unassigned',
+              id: `${eventData.startWeek}-${Date.now()}`
+            }
+
+            const currentEvents = this.events();
+            this.events.set([...currentEvents, newEvent]);
+          } else {
+            newUnassignedEvents[0].amount += eventData.amount;
+          }
+          unassignedEvents[0].amount -= eventData.amount;
+        }
+      }
+    }
+
     if (newSupplierId !== 'unassigned' && !notAllowed) {
       // const eventsInLane = this.events().filter(e => (e.supplierId === newSupplierId)).filter(e => !((e.id === eventData.id) && (e.productType === eventData.productType)));
       const eventsInLane: EventData[] = [];
@@ -814,7 +1010,8 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
             const currentEvents = this.events();
             this.events.set([...currentEvents, newEvent]);
           } else {
-            unassignedEvents[0].amount += newEventAmount
+            unassignedEvents[0].amount += newEventAmount;
+            eventData.amount -= newEventAmount;
           }
         }
       } else {
@@ -854,8 +1051,8 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     // The previous calls to getEventLeftPosition(e) and getEventTopPosition(e) were insufficient
     // because they didn't account for the new stacking.
 
-    if (eventData.productType === 'F' && (newStartWeekString !== eventData.startWeek))
-      this.updateEventsWithMaleGroups(eventData, newStartWeekString);
+    // if (eventData.productType === 'F' && (newStartWeekString !== eventData.startWeek))
+    // this.updateEventsWithMaleGroups(eventData, newStartWeekString);
 
     this.calculateAllEventPositions(); // Re-calculate base positions for all events
 
@@ -1009,20 +1206,68 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     return totalHeightAboveSuppliers;
   }
 
-  onEditEvent(eventData: EventData): void {
+  onEditEvent(data: { event: EventData, reset: boolean }): void {
+    if (data.reset) {
+      let eventData = this.events().find(ev => ev.id === data.event.id);
+      if (eventData)
+        this.resetEvent(eventData)
+      return;
+    }
+
+    if (!data.event) return;
+
+    if (data.event.productType === 'F') {
+      const newSupplier = this.suppliers.find(s => s.id === data.event.supplierId);
+      const filteredEvents = this.events().filter(e => e.startWeek === data.event.startWeek && e.supplierId === data.event.supplierId && e.id !== data.event.id)
+      const totalAmount = filteredEvents.reduce((sum, item) => sum + (item.amount || 0), 0) + data.event.amount;
+
+      const unassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === data.event.startWeek && e.supplierId === 'unassigned' && e.id !== data.event.id)
+      if (newSupplier?.capacity && newSupplier?.capacity < totalAmount) {
+        const newEventAmount = totalAmount - newSupplier?.capacity;
+
+        if (!unassignedEvents.length) {
+          const newEvent: EventData = { ...data.event, amount: newEventAmount, supplierId: 'unassigned', id: `${data.event.startWeek}-${Date.now()}` }
+
+          const currentEvents = this.events();
+          this.events.set([...currentEvents, newEvent]);
+        } else {
+          unassignedEvents[0].amount += newEventAmount;
+        }
+      }
+
+      this.updateEventsWithMaleGroups(data.event);
+    } else {
+      const newSupplier = this.suppliers.find(s => s.id === data.event.supplierId);
+      const filteredEvents = this.events().filter(e => e.startWeek === data.event.startWeek && e.supplierId === data.event.supplierId && e.id !== data.event.id)
+      const totalAmount = filteredEvents.reduce((sum, item) => sum + (item.amount || 0), 0) + data.event.amount;
+
+      const unassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === data.event.startWeek && e.supplierId === 'unassigned' && e.id !== data.event.id)
+      if (newSupplier?.capacity && newSupplier?.capacity < totalAmount) {
+        const newEventAmount = totalAmount - newSupplier?.capacity;
+
+        if (!unassignedEvents.length) {
+          const newEvent: EventData = { ...data.event, amount: newEventAmount, supplierId: 'unassigned', id: `${data.event.startWeek}-${Date.now()}` }
+          data.event.amount = data.event.amount - newEventAmount;
+
+          const currentEvents = this.events();
+          this.events.set([...currentEvents, newEvent]);
+        } else {
+          unassignedEvents[0].amount += newEventAmount;
+          data.event.amount -= newEventAmount;
+        }
+      }
+    }
+
     const updated = this.events().map((ev: EventData) => {
-      if (ev.id === eventData.id) {
-        ev.name = eventData.name;
-        ev.amount = eventData.amount;
-        ev.maxShiftWeeksEarly = eventData.maxShiftWeeksEarly;
-        ev.maxShiftWeeksLate = eventData.maxShiftWeeksLate;
+      if (ev.id === data.event.id) {
+        ev.name = data.event.name;
+        ev.amount = data.event.amount;
+        ev.maxShiftWeeksEarly = data.event.maxShiftWeeksEarly;
+        ev.maxShiftWeeksLate = data.event.maxShiftWeeksLate;
       }
       return ev;
     });
     this.events.set(updated);
-
-    if (eventData.productType === 'F')
-      this.updateEventsWithMaleGroups(eventData);
 
     this.calculateAllEventPositions();
     this.updateEvents();
@@ -1326,5 +1571,74 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     }
 
     return updated;
+  }
+
+  /** Глобальний (по контенту) X для точки, з урахуванням горизонтального скролу */
+  private toContentX(pointerClientX: number) {
+    const gridEl = this.gridContainer?.nativeElement as HTMLElement;
+    const scrollEl = this.scrollContainer?.nativeElement as HTMLElement; // #scrollContainer
+    if (!gridEl) return 0;
+    const rect = gridEl.getBoundingClientRect();
+    const scrollLeft = scrollEl ? scrollEl.scrollLeft : 0;
+    // pointerClientX -> в координати контенту (а не видимої області)
+    return Math.max(0, pointerClientX - rect.left + scrollLeft);
+  }
+
+  /** Підсвітка строго тієї тижневої клітинки, куди впаде блок */
+  private snapToDropCell(pointerX: number, pointerY: number, event: EventData) {
+    const gridEl = this.gridContainer?.nativeElement as HTMLElement;
+    if (!gridEl) return this.drop();
+
+    // --- X з урахуванням scrollLeft ---
+    const xContent = this.toContentX(pointerX);
+
+    // --- Обчислюємо індекс тижня ТАК САМО, як у onDrop ---
+    // якщо у тебе є вже готова функція для пікселі->startWeek, краще викликати її
+    // і потім знайти індекс у this.weeks. Якщо ні — робимо за шириною колонки:
+    let colIdx = Math.floor(xContent / this.WEEK_COLUMN_WIDTH_PX);
+    colIdx = Math.max(0, Math.min(this.weeks.length - 1, colIdx));
+
+    const colLeft = colIdx * this.WEEK_COLUMN_WIDTH_PX; // координата в системі "grid-content"
+
+    // --- Y: шукаємо правильний рядок-постачальник (без змін) ---
+    const rect = gridEl.getBoundingClientRect();
+    const y = Math.max(0, pointerY - rect.top);
+    let rowTop = 0;
+    let rowHeight = 0;
+    let accTop = 0;
+
+    for (const s of this.suppliers) {
+      const hUnits = (s.calculatedCapacity && s.calculatedCapacity > s.capacity) ? s.calculatedCapacity : s.capacity;
+      const h = hUnits * this.AMOUNT_ROW_HEIGHT_UNIT_PX;
+      if (y >= accTop && y < accTop + h) {
+        rowTop = accTop;
+        rowHeight = h;
+        break;
+      }
+      accTop += h;
+    }
+    if (rowHeight === 0 && this.suppliers.length) {
+      const last = this.suppliers[this.suppliers.length - 1];
+      const hUnits = (last.calculatedCapacity && last.calculatedCapacity > last.capacity) ? last.calculatedCapacity : last.capacity;
+      rowHeight = hUnits * this.AMOUNT_ROW_HEIGHT_UNIT_PX;
+      rowTop = accTop - rowHeight;
+    }
+
+    // Підсвічуємо рівно одну тижневу колонку — саме ту, куди впаде блок.
+    const ghostLeft = colLeft;
+    const ghostWidth = this.WEEK_COLUMN_WIDTH_PX;
+
+    // Якщо маєш власну перевірку валідності — підстав сюди
+    const valid = true;
+
+    return {
+      show: true,
+      colLeft,
+      rowTop,
+      rowHeight,
+      ghostLeft,
+      ghostWidth,
+      valid,
+    };
   }
 }

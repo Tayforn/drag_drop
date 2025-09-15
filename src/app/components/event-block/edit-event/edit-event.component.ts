@@ -1,4 +1,4 @@
-import {Component, inject} from '@angular/core';
+import { Component, inject } from '@angular/core';
 import {
   MAT_DIALOG_DATA,
   MatDialogActions,
@@ -6,13 +6,13 @@ import {
   MatDialogRef,
   MatDialogTitle
 } from '@angular/material/dialog';
-import {EventData} from '../../../models/event.model';
-import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import { MatButtonModule} from '@angular/material/button';
-import { MatInputModule} from '@angular/material/input';
-import {MatFormFieldModule} from '@angular/material/form-field';
-import {MatSelectModule} from '@angular/material/select';
-import {addWeeks} from 'date-fns';
+import { EventData } from '../../../models/event.model';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { addWeeks } from 'date-fns';
 
 @Component({
   selector: 'app-edit-event',
@@ -46,7 +46,7 @@ export class EditEventComponent {
     });
   }
 
-  onCloseDialog(close = true): void {
+  onCloseDialog(close = true, reset = false): void {
     let event: EventData | null = null;
     if (!close) {
       this.editForm.markAsTouched();
@@ -58,6 +58,6 @@ export class EditEventComponent {
       event.maxShiftWeeksEarly = data.maxShiftWeeksEarly;
       event.maxShiftWeeksLate = data.maxShiftWeeksLate;
     }
-    this.dialogRef.close(event ? event : null);
+    this.dialogRef.close({ event, reset });
   }
 }

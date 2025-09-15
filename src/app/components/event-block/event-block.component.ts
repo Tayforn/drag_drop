@@ -34,7 +34,7 @@ export class EventBlockComponent implements OnInit {
   @Output() dragEnded = new EventEmitter<any>();
   @Output() dragStarted = new EventEmitter<any>();
   @Output() dragMoved = new EventEmitter<any>();
-  @Output() editEvent = new EventEmitter<EventData>();
+  @Output() editEvent = new EventEmitter<{ event: EventData, reset: boolean }>();
 
   eventComponent = viewChild('eventBlock');
 
@@ -45,7 +45,7 @@ export class EventBlockComponent implements OnInit {
     if (this.event().supplierId === 'unassigned') {
       return this.pixelsPerWeek();
     }
-    if(this.event().name === 'ST-100683'){
+    if (this.event().name === 'ST-100683') {
       console.log(`e`, this.event());
       console.log(`weekCount`, weekCount);
     }
@@ -133,7 +133,7 @@ export class EventBlockComponent implements OnInit {
       width: '400px',
     });
 
-    dialogRef.afterClosed().subscribe((result: EventData) => {
+    dialogRef.afterClosed().subscribe((result: { event: EventData, reset: boolean }) => {
       if (result) {
         this.editEvent.emit(result);
       }

@@ -307,3 +307,51 @@ mat-spinner {
   box-sizing: border-box;
   z-index: 1; // Ensure it's above grid lines but below the dragging element
 }
+
+.grid-content {
+  position: relative;
+}
+
+.drop-col,
+.drop-row,
+.drop-cell,
+.drop-ghost {
+  position: absolute;
+  z-index: 3;           // вище за лінії, нижче за перетягуваний блок
+  pointer-events: none;
+  will-change: transform, width, height, left, top;
+}
+
+.drop-col { top: 0; background: rgba(0,0,0,.05); }
+.drop-row { left: 0; background: rgba(0,0,0,.02); }
+
+.drop-cell {
+position: absolute;
+  pointer-events: none;
+  z-index: 5;
+
+  /* Full-cell highlight */
+  background: rgba(33, 150, 243, 0.15);           /* subtle fill */
+  outline: 2px solid rgba(33, 150, 243, 0.65);    /* visible border */
+  outline-offset: -2px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6);
+
+  /* Soft pulse to make the target obvious */
+  animation: dropcell-pulse 1.2s ease-in-out infinite;
+
+  &.bad {
+    background: rgba(244, 67, 54, 0.12);
+    outline-color: rgba(244, 67, 54, 0.7);
+    animation: dropcell-pulse-bad 1.2s ease-in-out infinite;
+  }
+}
+
+.drop-ghost {
+  background: rgba(33,150,243,.15);
+  border: 1px solid rgba(33,150,243,.45);
+}
+.drop-ghost.bad {
+  background: rgba(244,67,54,.15);
+  border-color: rgba(244,67,54,.45);
+}
