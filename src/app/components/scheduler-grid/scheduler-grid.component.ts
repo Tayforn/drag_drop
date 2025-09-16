@@ -690,7 +690,6 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
           topPosition: 0,
           id: `${eventData.startWeek}-${Date.now()}`
         }
-        console.log(`new`, newEvent);
         const currentEvents = this.events();
         this.events.set([...currentEvents, newEvent]);
       } else {
