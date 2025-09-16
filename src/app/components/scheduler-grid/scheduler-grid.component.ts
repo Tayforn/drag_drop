@@ -663,14 +663,8 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
   resetEvent(eventData: EventData) {
     if (eventData.supplierId === 'unassigned') return;
-    if (eventData.productType === 'M') return;
 
-    this.draggedWeek.set(null);
-    // Hide placeholder and clear dragging event reference
-    this.showPlaceholder = false;
-    this.draggingEvent = null;
-
-    let newStartWeekString: string = eventData.date;
+    let newStartWeekString: string = eventData.productType === 'F' ? eventData.date : eventData.startWeek;
 
     const durationWeeks = this.dateUtils.getWeekRangeCount2(eventData.startWeek, eventData.endWeek);
 
@@ -682,29 +676,30 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       newEndWeekString = eventData.endWeek; // Should not happen if newStartWeekString is always set
     }
 
-    // if (eventData.productType === 'M') {
-    //   const newUnassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
-    //   if (!newUnassignedEvents.length) {
-    //     const newEvent: EventData = {
-    //       ...eventData,
-    //       amount: eventData.amount,
-    //       productType: 'M',
-    //       startWeek: newStartWeekString,
-    //       endWeek: newEndWeekString,
-    //       stackOffsetPx: 0,
-    //       supplierId: 'unassigned',
-    //       id: `${eventData.startWeek}-${Date.now()}`
-    //     }
+    if (eventData.productType === 'M') {
+      const newUnassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
+      if (!newUnassignedEvents.length) {
+        const newEvent: EventData = {
+          ...eventData,
+          amount: eventData.amount,
+          productType: 'M',
+          startWeek: newStartWeekString,
+          endWeek: newEndWeekString,
+          stackOffsetPx: 0,
+          supplierId: 'unassigned',
+          topPosition: 0,
+          id: `${eventData.startWeek}-${Date.now()}`
+        }
+        console.log(`new`, newEvent);
+        const currentEvents = this.events();
+        this.events.set([...currentEvents, newEvent]);
+      } else {
+        newUnassignedEvents[0].amount += eventData.amount;
+      }
+      this.events.set(this.events().filter(e => e.id !== eventData.id));
 
-    //     const currentEvents = this.events();
-    //     this.events.set([...currentEvents, newEvent]);
-    //   } else {
-    //     newUnassignedEvents[0].amount += eventData.amount;
-    //   }
-    //   this.events.set(this.events().filter(e => e.id !== eventData.id));
-
-    //   return;
-    // }
+      return;
+    }
 
     // --- Determine new supplier based on newLogicalY ---
     let newSupplierId: string = 'unassigned';
@@ -715,31 +710,30 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
     let notAllowed = false;
     let notAllowedMessage = 'Not allowed';
 
-    if (eventData.startWeek !== newStartWeekString) {
-      if (!unassignedEvents.length || totalunassignedEventsAmount < eventData.amount) {
-        notAllowed = true;
-        notAllowedMessage = `Put M-block ${eventData.amount} to unassigned`;
-      } else {
-        const newUnassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
-        if (!newUnassignedEvents.length) {
-          const newEvent: EventData = {
-            ...eventData,
-            amount: eventData.amount,
-            productType: 'M',
-            startWeek: newStartWeekString,
-            endWeek: newEndWeekString,
-            stackOffsetPx: 0,
-            supplierId: 'unassigned',
-            id: `${eventData.startWeek}-${Date.now()}`
-          }
-
-          const currentEvents = this.events();
-          this.events.set([...currentEvents, newEvent]);
-        } else {
-          newUnassignedEvents[0].amount += eventData.amount;
+    if (!unassignedEvents.length || totalunassignedEventsAmount < eventData.amount) {
+      let count = eventData.amount - totalunassignedEventsAmount;
+      notAllowed = true;
+      notAllowedMessage = `Move the ${count ? count : eventData.amount} capacity M-block to unassigned to be able to move`;
+    } else {
+      const newUnassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
+      if (!newUnassignedEvents.length) {
+        const newEvent: EventData = {
+          ...eventData,
+          amount: eventData.amount,
+          productType: 'M',
+          startWeek: newStartWeekString,
+          endWeek: newEndWeekString,
+          stackOffsetPx: 0,
+          supplierId: 'unassigned',
+          id: `${eventData.startWeek}-${Date.now()}`
         }
-        unassignedEvents[0].amount -= eventData.amount;
+
+        const currentEvents = this.events();
+        this.events.set([...currentEvents, newEvent]);
+      } else {
+        newUnassignedEvents[0].amount += eventData.amount;
       }
+      unassignedEvents[0].amount -= eventData.amount;
     }
 
     if (notAllowed) {
@@ -749,8 +743,6 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
       this._snackBar.open(notAllowedMessage, undefined, { duration: 3000 });
     }
 
-    // --- Update Event Data & Re-render ---
-    // Create a new array reference and update the specific event to trigger OnPush
     const updatedEvents = this.events().map(e => {
       if ((e.id === eventData.id) && (e.productType === eventData.productType)) {
         return {
@@ -758,7 +750,7 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
           startWeek: newStartWeekString,
           endWeek: newEndWeekString,
           supplierId: newSupplierId,
-          stackOffsetPx: 0 // Reset stack offset for the dragged event for re-calculation
+          stackOffsetPx: 0
         };
       }
       return e;
@@ -766,18 +758,12 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
     this.events.set(updatedEvents); // Assign new array to trigger change detection
 
-    // After updating the event's core properties, re-calculate all positions and apply stacking
-    // The previous calls to getEventLeftPosition(e) and getEventTopPosition(e) were insufficient
-    // because they didn't account for the new stacking.
-
     // if (eventData.productType === 'F' && (newStartWeekString !== eventData.startWeek))
     // this.updateEventsWithMaleGroups(eventData, newStartWeekString);
 
-    this.calculateAllEventPositions(); // Re-calculate base positions for all events
+    this.calculateAllEventPositions();
 
     console.log(`Event ${eventData.name} final update to: ${newStartWeekString} - ${newEndWeekString}, Supplier: ${newSupplierId}`);
-    // IMPORTANT: Clear the transform applied by cdkDrag
-    // This needs to be done *after* Angular has applied the new top/left positions
     setTimeout(() => {
       this.cdr.detectChanges(); // Trigger final change detection
     }, 0);
@@ -955,8 +941,9 @@ export class SchedulerGridComponent implements OnInit, AfterViewInit {
 
       if (eventData.startWeek !== newStartWeekString) {
         if (!unassignedEvents.length || totalunassignedEventsAmount < eventData.amount) {
+          let count = eventData.amount - totalunassignedEventsAmount;
           notAllowed = true;
-          notAllowedMessage = `Put M-block ${eventData.amount} to unassigned`;
+          notAllowedMessage = `Move the ${count ? count : eventData.amount} capacity block to unassigned to be able to move`;
         } else {
           const newUnassignedEvents = this.events().filter(e => e.productType === 'M' && e.startWeek === newStartWeekString && e.supplierId === 'unassigned' && e.id !== eventData.id)
           if (!newUnassignedEvents.length) {
