@@ -74,23 +74,24 @@ export class LoadDataComponent {
           if (producers.success && schedules.success) {
             producers.data.forEach((producer) => {
               const schedule = schedules.data.find(s => s.producer === producer.external_id)
+              if (schedule) {
+                const fromSchedule = schedule?.week_in ? true : false;
+                const weekIn = schedule?.week_in ? schedule?.week_in : producer.week_in;
 
-              const fromSchedule = schedule?.week_in ? true : false;
-              const weekIn = schedule?.week_in ? schedule?.week_in : producer.week_in;
+                const event: any = {
+                  id: `${producer.external_id}_${producer.week_in}`,
+                  name: producer.name,
+                  date: this.processWeeks(weekIn, fromSchedule, producer.external_id),
+                  amount: producer.capacity,
+                  supplierId: 'unassigned'
+                }
+                event.date = this.dateUtils.fixIsoWeek(event.date);
 
-              const event: any = {
-                id: `${producer.external_id}_${producer.week_in}`,
-                name: producer.name,
-                date: this.processWeeks(weekIn, fromSchedule, producer.external_id),
-                amount: producer.capacity,
-                supplierId: 'unassigned'
+                const eventFemale = new EventData(event);
+
+                eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18 - 1));
+                events.push(eventFemale);
               }
-              event.date = this.dateUtils.fixIsoWeek(event.date);
-
-              const eventFemale = new EventData(event);
-
-              eventFemale.endWeek = this.getISOWeekString(addWeeks(this.getDateFromISOWeekStr(eventFemale.startWeek), 18 - 1));
-              events.push(eventFemale);
             });
           }
 
